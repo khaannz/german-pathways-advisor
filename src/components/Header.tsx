@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 
 const Header = () => {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isEmployee } = useAuth();
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -57,6 +57,14 @@ const Header = () => {
                       Dashboard
                     </a>
                   </DropdownMenuItem>
+                  {isEmployee && (
+                    <DropdownMenuItem asChild>
+                      <a href="/employee-dashboard" className="flex items-center">
+                        <User className="h-4 w-4 mr-2" />
+                        Employee Dashboard
+                      </a>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem>
                     <User className="h-4 w-4 mr-2" />
                     Profile

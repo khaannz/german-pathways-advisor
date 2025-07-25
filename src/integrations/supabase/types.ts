@@ -48,6 +48,7 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          role: string
           target_program: string | null
           target_university: string | null
           updated_at: string
@@ -59,6 +60,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          role?: string
           target_program?: string | null
           target_university?: string | null
           updated_at?: string
@@ -70,6 +72,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          role?: string
           target_program?: string | null
           target_university?: string | null
           updated_at?: string
@@ -139,7 +142,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      is_employee: {
+        Args: { _user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       application_status: "not_applied" | "in_progress" | "applied"
