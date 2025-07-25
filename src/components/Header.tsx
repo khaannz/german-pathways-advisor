@@ -1,7 +1,15 @@
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Phone, Mail } from "lucide-react";
+import { GraduationCap, Phone, Mail, LogOut, User } from "lucide-react";
+import { useAuth } from "./AuthContext";
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger 
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
+  const { user, signOut } = useAuth();
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
       <div className="container mx-auto px-4 py-4">
@@ -34,9 +42,30 @@ const Header = () => {
                 <span>info@edupath.de</span>
               </div>
             </div>
-            <Button variant="hero" size="sm">
-              Free Consultation
-            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <User className="h-4 w-4 mr-2" />
+                    Account
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <User className="h-4 w-4 mr-2" />
+                    Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="hero" size="sm" asChild>
+                <a href="/auth">Sign In</a>
+              </Button>
+            )}
           </div>
         </div>
       </div>
