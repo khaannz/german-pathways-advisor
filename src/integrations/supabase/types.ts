@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      lors: {
+        Row: {
+          created_at: string
+          google_docs_link: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_docs_link: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          google_docs_link?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           consultation_status: string | null
@@ -50,6 +77,63 @@ export type Database = {
         }
         Relationships: []
       }
+      shortlisted_universities: {
+        Row: {
+          application_status: Database["public"]["Enums"]["application_status"]
+          created_at: string
+          id: string
+          program_name: string
+          university_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          application_status?: Database["public"]["Enums"]["application_status"]
+          created_at?: string
+          id?: string
+          program_name: string
+          university_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          application_status?: Database["public"]["Enums"]["application_status"]
+          created_at?: string
+          id?: string
+          program_name?: string
+          university_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      sops: {
+        Row: {
+          created_at: string
+          google_docs_link: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_docs_link: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          google_docs_link?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -58,7 +142,7 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      application_status: "not_applied" | "in_progress" | "applied"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -185,6 +269,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      application_status: ["not_applied", "in_progress", "applied"],
+    },
   },
 } as const

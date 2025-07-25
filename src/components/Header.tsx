@@ -51,6 +51,12 @@ const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <a href="/dashboard" className="flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      Dashboard
+                    </a>
+                  </DropdownMenuItem>
                   <DropdownMenuItem>
                     <User className="h-4 w-4 mr-2" />
                     Profile
