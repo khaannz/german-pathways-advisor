@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { GraduationCap, Phone, Mail, LogOut, User } from "lucide-react";
+import { GraduationCap, Phone, Mail, LogOut, User, FileText } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
 import { 
   DropdownMenu,
@@ -55,6 +55,12 @@ const Header = () => {
                     <a href="/dashboard" className="flex items-center">
                       <User className="h-4 w-4 mr-2" />
                       Dashboard
+                    </a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href="/questionnaire" className="flex items-center">
+                      <FileText className="h-4 w-4 mr-2" />
+                      Document Questionnaire
                     </a>
                   </DropdownMenuItem>
                   {isEmployee && (
