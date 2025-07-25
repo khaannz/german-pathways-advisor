@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { GraduationCap, Phone, Mail, LogOut, User } from "lucide-react";
-import { useAuth } from "./AuthContext";
+import { useAuth } from "@/components/AuthContext";
 import { 
   DropdownMenu,
   DropdownMenuContent,
