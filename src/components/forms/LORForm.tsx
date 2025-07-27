@@ -112,6 +112,7 @@ export function LORForm() {
       toast({
         title: "Success",
         description: "Letter of Recommendation information saved successfully!",
+        duration: 5000,
       });
 
       loadExistingResponse();
@@ -121,6 +122,7 @@ export function LORForm() {
         title: "Error",
         description: "Failed to save Letter of Recommendation information. Please try again.",
         variant: "destructive",
+        duration: 7000,
       });
     } finally {
       setLoading(false);
@@ -145,9 +147,9 @@ export function LORForm() {
                 name="recommender_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Recommender Name</FormLabel>
+                    <FormLabel>Recommender Name *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="Dr. John Smith or Prof. Jane Doe" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -158,9 +160,9 @@ export function LORForm() {
                 name="recommender_designation"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Designation/Title</FormLabel>
+                    <FormLabel>Designation/Title *</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., Professor, Manager, etc." {...field} />
+                      <Input placeholder="e.g., Associate Professor, Senior Manager, Director" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -171,9 +173,9 @@ export function LORForm() {
                 name="recommender_institution"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Institution/Organization</FormLabel>
+                    <FormLabel>Institution/Organization *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="e.g., MIT, Google Inc., Delhi University" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -184,9 +186,9 @@ export function LORForm() {
                 name="recommender_email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Recommender Email</FormLabel>
+                    <FormLabel>Recommender Email *</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} />
+                      <Input type="email" placeholder="professor.email@university.edu" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -201,14 +203,17 @@ export function LORForm() {
                 name="relationship_type"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Relationship Type</FormLabel>
+                    <FormLabel>Relationship Type * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe your relationship with the recommender (e.g., student-teacher, employee-supervisor)..."
+                        placeholder="Example: Dr. Smith was my professor for Advanced Algorithms and Data Structures. He also supervised my final year project on machine learning applications. Our relationship is primarily academic, where he has observed my problem-solving skills and research capabilities."
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -218,14 +223,17 @@ export function LORForm() {
                 name="relationship_duration"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Duration of Relationship</FormLabel>
+                    <FormLabel>Duration of Relationship * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="How long have you known this person and in what capacity?"
+                        placeholder="Example: I have known Prof. Smith for 2 years (2022-2024). I took two courses with him in my 6th and 7th semesters, and he supervised my 6-month capstone project. During this time, he closely observed my academic progress and research abilities."
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -239,14 +247,17 @@ export function LORForm() {
                 name="courses_projects"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Courses/Projects Together</FormLabel>
+                    <FormLabel>Courses/Projects Together * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe courses, projects, or work you've done with this recommender..."
+                        placeholder="Example: I completed 'Advanced Algorithms' (scored A-) and 'Machine Learning' (scored A) under Prof. Smith. For my capstone project, I developed a recommendation system using collaborative filtering. He guided me through the research methodology and helped refine my approach when I faced challenges with data preprocessing."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -256,14 +267,17 @@ export function LORForm() {
                 name="key_strengths"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Key Strengths They Can Highlight</FormLabel>
+                    <FormLabel>Key Strengths They Can Highlight * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What specific strengths or qualities can this person highlight about you?"
+                        placeholder="Example: Prof. Smith can highlight my analytical thinking, problem-solving approach, and ability to work independently on complex projects. He has seen my curiosity in asking thoughtful questions during lectures and my persistence in debugging code during project work. He can also speak to my communication skills during presentations."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -273,14 +287,17 @@ export function LORForm() {
                 name="specific_examples"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Specific Examples/Achievements</FormLabel>
+                    <FormLabel>Specific Examples/Achievements * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Provide specific examples or achievements they witnessed or were involved in..."
+                        placeholder="Example: During my capstone project, I successfully improved the accuracy of the recommendation system from 75% to 89% by implementing a hybrid approach. Prof. Smith witnessed my presentation to a panel of industry experts where I clearly explained complex algorithms. He also saw me help struggling classmates understand difficult concepts."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -290,14 +307,17 @@ export function LORForm() {
                 name="grades_performance"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Academic/Work Performance</FormLabel>
+                    <FormLabel>Academic/Work Performance * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe your performance in their class/under their supervision (grades, feedback, etc.)..."
+                        placeholder="Example: I consistently ranked in the top 10% of both his classes. He gave me positive feedback on my assignments, particularly praising my code quality and documentation. In his feedback for my project, he mentioned my 'exceptional attention to detail and innovative approach to problem-solving.'"
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

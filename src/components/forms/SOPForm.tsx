@@ -18,7 +18,9 @@ const sopSchema = z.object({
   phone: z.string().min(10, "Valid phone number is required"),
   nationality: z.string().min(2, "Nationality is required"),
   date_of_birth: z.string().min(1, "Date of birth is required"),
-  linked_in: z.string().url("Valid LinkedIn URL is required").optional().or(z.literal("")),
+  linked_in: z.string().optional().refine((val) => !val || val === "" || z.string().url().safeParse(val).success, {
+    message: "Please enter a valid LinkedIn URL or leave empty"
+  }),
   current_education_status: z.string().min(15, "Please provide at least 15 characters"),
   intended_program: z.string().min(15, "Please provide at least 15 characters"),
   target_universities: z.string().min(15, "Please provide at least 15 characters"),
@@ -142,6 +144,7 @@ export function SOPForm() {
       toast({
         title: "Success",
         description: "Statement of Purpose saved successfully!",
+        duration: 5000,
       });
 
       loadExistingResponse();
@@ -151,6 +154,7 @@ export function SOPForm() {
         title: "Error",
         description: "Failed to save Statement of Purpose. Please try again.",
         variant: "destructive",
+        duration: 7000,
       });
     } finally {
       setLoading(false);
@@ -175,9 +179,9 @@ export function SOPForm() {
                 name="full_name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel>Full Name *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="Enter your full name as on passport" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -188,9 +192,9 @@ export function SOPForm() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel>Email Address *</FormLabel>
                     <FormControl>
-                      <Input type="email" {...field} />
+                      <Input type="email" placeholder="your.email@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -201,9 +205,9 @@ export function SOPForm() {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone</FormLabel>
+                    <FormLabel>Phone Number *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="+49 123 456 7890 or +91 98765 43210" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -214,9 +218,9 @@ export function SOPForm() {
                 name="nationality"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Nationality</FormLabel>
+                    <FormLabel>Nationality *</FormLabel>
                     <FormControl>
-                      <Input {...field} />
+                      <Input placeholder="e.g., Indian, German, American" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -242,7 +246,7 @@ export function SOPForm() {
                   <FormItem>
                     <FormLabel>LinkedIn Profile (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="https://linkedin.com/in/yourprofile" {...field} />
+                      <Input placeholder="https://linkedin.com/in/yourprofile (leave empty if none)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -257,14 +261,17 @@ export function SOPForm() {
                 name="current_education_status"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Current Education Status</FormLabel>
+                    <FormLabel>Current Education Status * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe your current educational status..."
+                        placeholder="Example: I am currently completing my Bachelor's degree in Computer Science at Delhi University, expecting graduation in May 2024. I have maintained a GPA of 8.5/10 and am particularly interested in artificial intelligence and machine learning."
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -274,14 +281,17 @@ export function SOPForm() {
                 name="intended_program"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Intended Program</FormLabel>
+                    <FormLabel>Intended Program * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What program are you applying for and why?"
+                        placeholder="Example: I am applying for the Master's in Computer Science program because it aligns perfectly with my background in software development and my career goals in AI research. The program's focus on machine learning and data science matches my interests."
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -291,14 +301,17 @@ export function SOPForm() {
                 name="target_universities"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Target Universities</FormLabel>
+                    <FormLabel>Target Universities * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="List your target universities and programs..."
+                        placeholder="Example: Technical University of Munich (TUM) - MS Computer Science, RWTH Aachen - MS Data Science, University of Stuttgart - MS Software Engineering. I chose these universities for their strong research programs and industry connections."
                         className="min-h-[100px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -312,14 +325,17 @@ export function SOPForm() {
                 name="why_this_program"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Why This Program?</FormLabel>
+                    <FormLabel>Why This Program? * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Explain why you chose this specific program..."
+                        placeholder="Example: This program offers the perfect blend of theoretical knowledge and practical application in computer science. The curriculum includes courses in machine learning, distributed systems, and software architecture that directly align with my career goals in developing intelligent systems."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -329,14 +345,17 @@ export function SOPForm() {
                 name="why_germany"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Why Germany?</FormLabel>
+                    <FormLabel>Why Germany? * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Why did you choose Germany for your studies?"
+                        placeholder="Example: Germany is a global leader in technology and engineering with a strong emphasis on research and innovation. The country offers excellent educational opportunities, particularly in STEM fields, and has a thriving tech industry with companies like SAP and Siemens."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -350,14 +369,17 @@ export function SOPForm() {
                 name="short_term_goals"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Short-term Goals</FormLabel>
+                    <FormLabel>Short-term Goals * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What are your short-term career goals?"
+                        placeholder="Example: Upon completing my Master's degree, I plan to work as a software engineer at a leading tech company in Germany, focusing on developing AI-powered applications. I aim to gain 2-3 years of industry experience while continuing to learn about emerging technologies."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -367,14 +389,17 @@ export function SOPForm() {
                 name="long_term_goals"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Long-term Goals</FormLabel>
+                    <FormLabel>Long-term Goals * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What are your long-term career aspirations?"
+                        placeholder="Example: In the long term, I aspire to become a technical lead or architect, eventually starting my own AI-focused company. I want to contribute to breakthrough research in machine learning and develop solutions that can make a positive impact on society."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -408,11 +433,11 @@ export function SOPForm() {
                     <FormItem>
                       <FormLabel>Thesis/Research Details</FormLabel>
                       <FormControl>
-                        <Textarea
-                          placeholder="Describe your thesis or research experience..."
-                          className="min-h-[120px]"
-                          {...field}
-                        />
+                      <Textarea
+                        placeholder="Example: I completed my Bachelor's thesis on 'Deep Learning for Image Recognition' under Prof. Smith's guidance. The project involved developing a CNN model that achieved 95% accuracy in classifying medical images. This research sparked my interest in AI applications in healthcare."
+                        className="min-h-[120px]"
+                        {...field}
+                      />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -428,14 +453,17 @@ export function SOPForm() {
                 name="academic_projects"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Academic Projects</FormLabel>
+                    <FormLabel>Academic Projects * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe your relevant academic projects..."
+                        placeholder="Example: 1) E-commerce website using React and Node.js with payment integration 2) Machine learning model for stock price prediction using Python and TensorFlow 3) Mobile app for task management built with Flutter. Each project helped me develop both technical and problem-solving skills."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -445,14 +473,17 @@ export function SOPForm() {
                 name="work_experience"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Work Experience</FormLabel>
+                    <FormLabel>Work Experience * (min 15 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe your relevant work experience..."
+                        placeholder="Example: Software Engineering Intern at TechCorp (6 months) - Developed REST APIs using Java Spring Boot, worked with databases, and collaborated with senior developers on feature development. Gained experience in agile methodology and version control."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/15 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -466,14 +497,17 @@ export function SOPForm() {
                 name="personal_qualities"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Personal Qualities</FormLabel>
+                    <FormLabel>Personal Qualities * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="What personal qualities make you a good candidate?"
+                        placeholder="Example: I am a dedicated and curious learner who thrives on solving complex problems. My strong analytical skills, combined with excellent communication abilities, enable me to work effectively in team environments. I am also highly adaptable and embrace new challenges."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -483,14 +517,17 @@ export function SOPForm() {
                 name="challenges_accomplishments"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Challenges & Accomplishments</FormLabel>
+                    <FormLabel>Challenges & Accomplishments * (min 20 characters)</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Describe significant challenges you've overcome and accomplishments..."
+                        placeholder="Example: I overcame financial constraints to fund my education by working part-time while maintaining academic excellence. I also led my university's coding team to victory in a national hackathon, which taught me valuable leadership and time management skills."
                         className="min-h-[120px]"
                         {...field}
                       />
                     </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/20 characters minimum
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}
