@@ -11,7 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Users, FileText, UserCheck, Search } from 'lucide-react';
+import { Plus, Users, FileText, UserCheck, Search, Upload, MessageSquare, Calendar, CheckCircle, Clock, ExternalLink, Download } from 'lucide-react';
+import { format } from 'date-fns';
 
 interface User {
   id: string;
@@ -45,6 +46,25 @@ interface LOR {
   created_at: string;
 }
 
+interface Document {
+  id: string;
+  type: string;
+  title: string;
+  file_url: string | null;
+  drive_link: string | null;
+  file_name: string | null;
+  file_size: number | null;
+  created_at: string;
+}
+
+interface Enquiry {
+  id: string;
+  subject: string;
+  message: string;
+  status: 'open' | 'resolved';
+  created_at: string;
+}
+
 const EmployeeDashboard = () => {
   const { user, isEmployee } = useAuth();
   const { toast } = useToast();
@@ -73,6 +93,8 @@ const EmployeeDashboard = () => {
   const [universities, setUniversities] = useState<ShortlistedUniversity[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
   const [lors, setLors] = useState<LOR[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
 
   useEffect(() => {
     if (!user || !isEmployee) {
@@ -100,15 +122,19 @@ const EmployeeDashboard = () => {
   const fetchUserData = async (userId: string) => {
     setLoading(true);
     
-    const [universitiesData, sopsData, lorsData] = await Promise.all([
+    const [universitiesData, sopsData, lorsData, documentsData, enquiriesData] = await Promise.all([
       supabase.from('shortlisted_universities').select('*').eq('user_id', userId),
       supabase.from('sops').select('*').eq('user_id', userId),
-      supabase.from('lors').select('*').eq('user_id', userId)
+      supabase.from('lors').select('*').eq('user_id', userId),
+      supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false })
     ]);
 
     setUniversities(universitiesData.data || []);
     setSops(sopsData.data || []);
     setLors(lorsData.data || []);
+    setDocuments((documentsData.data || []) as Document[]);
+    setEnquiries((enquiriesData.data || []) as Enquiry[]);
     setLoading(false);
   };
 
@@ -176,6 +202,20 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleUpdateEnquiryStatus = async (enquiryId: string, newStatus: 'open' | 'resolved') => {
+    const { error } = await supabase
+      .from('enquiries')
+      .update({ status: newStatus })
+      .eq('id', enquiryId);
+
+    if (error) {
+      toast({ title: "Error", description: "Failed to update enquiry status", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "Enquiry status updated successfully" });
+      fetchUserData(selectedUserId);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     const statusMap = {
       'not_applied': { label: 'Not Applied', variant: 'secondary' as const },
@@ -185,6 +225,34 @@ const EmployeeDashboard = () => {
     
     const statusInfo = statusMap[status as keyof typeof statusMap] || statusMap['not_applied'];
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
+  };
+
+  const getEnquiryStatusColor = (status: string) => {
+    return status === 'resolved' 
+      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+  };
+
+  const getEnquiryStatusIcon = (status: string) => {
+    return status === 'resolved' ? CheckCircle : Clock;
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const getDocumentTypeColor = (type: string) => {
+    switch (type) {
+      case 'SOP': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'LOR': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      case 'CV': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200';
+      case 'transcript': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
   };
 
   const filteredUsers = users.filter(user => 
@@ -216,10 +284,10 @@ const EmployeeDashboard = () => {
         <div className="container mx-auto px-4 py-8">
           <div className="mb-8">
             <h1 className="text-4xl font-bold mb-2">Employee Dashboard</h1>
-            <p className="text-muted-foreground">Manage user applications, SOPs, and LORs</p>
+            <p className="text-muted-foreground">Manage user applications, documents, and enquiries</p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Users</CardTitle>
@@ -232,7 +300,7 @@ const EmployeeDashboard = () => {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Universities</CardTitle>
+                <CardTitle className="text-sm font-medium">Universities</CardTitle>
                 <UserCheck className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -242,11 +310,21 @@ const EmployeeDashboard = () => {
             
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">Total Documents</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Documents</CardTitle>
+                <Upload className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{sops.length + lors.length}</div>
+                <div className="text-2xl font-bold">{documents.length}</div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Enquiries</CardTitle>
+                <MessageSquare className="h-4 w-4 text-muted-foreground" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{enquiries.length}</div>
               </CardContent>
             </Card>
           </div>
@@ -293,10 +371,12 @@ const EmployeeDashboard = () => {
             <div className="lg:col-span-3">
               {selectedUserId ? (
                 <Tabs defaultValue="universities" className="w-full">
-                  <TabsList className="grid w-full grid-cols-3">
+                  <TabsList className="grid w-full grid-cols-5">
                     <TabsTrigger value="universities">Universities</TabsTrigger>
                     <TabsTrigger value="sops">SOPs</TabsTrigger>
                     <TabsTrigger value="lors">LORs</TabsTrigger>
+                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                    <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
                   </TabsList>
                   
                   <TabsContent value="universities" className="space-y-4">
@@ -512,6 +592,122 @@ const EmployeeDashboard = () => {
                             ))}
                           </TableBody>
                         </Table>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="documents" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Upload className="h-4 w-4" />
+                          Student Documents ({documents.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {documents.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No documents uploaded by this student</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Size</TableHead>
+                                <TableHead>Date Added</TableHead>
+                                <TableHead>Action</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {documents.map((doc) => (
+                                <TableRow key={doc.id}>
+                                  <TableCell className="font-medium">{doc.title}</TableCell>
+                                  <TableCell>
+                                    <Badge className={getDocumentTypeColor(doc.type)}>
+                                      {doc.type}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell>
+                                    {doc.file_size ? formatFileSize(doc.file_size) : 'External Link'}
+                                  </TableCell>
+                                  <TableCell>{format(new Date(doc.created_at), 'MMM dd, yyyy')}</TableCell>
+                                  <TableCell>
+                                    {doc.file_url && (
+                                      <Button variant="outline" size="sm" className="mr-2">
+                                        <Download className="h-4 w-4" />
+                                      </Button>
+                                    )}
+                                    {doc.drive_link && (
+                                      <Button variant="outline" size="sm" asChild>
+                                        <a href={doc.drive_link} target="_blank" rel="noopener noreferrer">
+                                          <ExternalLink className="h-4 w-4" />
+                                        </a>
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="enquiries" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <MessageSquare className="h-4 w-4" />
+                          Student Enquiries ({enquiries.length})
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {enquiries.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No enquiries submitted by this student</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {enquiries.map((enquiry) => {
+                              const StatusIcon = getEnquiryStatusIcon(enquiry.status);
+                              return (
+                                <div key={enquiry.id} className="border rounded-lg p-4">
+                                  <div className="flex items-start justify-between mb-2">
+                                    <h3 className="font-medium">{enquiry.subject}</h3>
+                                    <div className="flex items-center gap-2">
+                                      <Badge className={getEnquiryStatusColor(enquiry.status)}>
+                                        <StatusIcon className="w-3 h-3 mr-1" />
+                                        {enquiry.status}
+                                      </Badge>
+                                      {enquiry.status === 'open' && (
+                                        <Button
+                                          size="sm"
+                                          onClick={() => handleUpdateEnquiryStatus(enquiry.id, 'resolved')}
+                                        >
+                                          Mark Resolved
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                  
+                                  <p className="text-sm text-muted-foreground mb-2">
+                                    {enquiry.message}
+                                  </p>
+                                  
+                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                    <Calendar className="h-3 w-3" />
+                                    {format(new Date(enquiry.created_at), 'MMM dd, yyyy • HH:mm')}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
                       </CardContent>
                     </Card>
                   </TabsContent>

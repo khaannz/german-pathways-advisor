@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { z } from 'zod';
 
 interface AuthContextType {
   user: User | null;
@@ -64,6 +65,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'user') => {
+    // Client-side email validation
+    const emailSchema = z.string().email("Please enter a valid email address");
+    
+    try {
+      emailSchema.parse(email);
+    } catch (error) {
+      return { error: { message: "Please enter a valid email address" } };
+    }
+
     const redirectUrl = `${window.location.origin}/`;
     
     const { error } = await supabase.auth.signUp({
