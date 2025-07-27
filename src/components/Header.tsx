@@ -65,6 +65,14 @@ const Header = () => {
                   </DropdownMenuItem>
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
+                      <a href="/questionnaire" className="flex items-center">
+                        <FileText className="h-4 w-4 mr-2" />
+                        Application Questionnaire
+                      </a>
+                    </DropdownMenuItem>
+                  )}
+                  {!isEmployee && (
+                    <DropdownMenuItem asChild>
                       <a href="/documents" className="flex items-center">
                         <Upload className="h-4 w-4 mr-2" />
                         My Documents

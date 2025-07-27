@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      cv_responses: {
+        Row: {
+          certifications: string | null
+          created_at: string
+          education_history: string | null
+          extracurriculars: string | null
+          id: string
+          languages: string | null
+          photo_url: string | null
+          soft_skills: string | null
+          technical_skills: string | null
+          updated_at: string
+          user_id: string
+          work_experience: string | null
+        }
+        Insert: {
+          certifications?: string | null
+          created_at?: string
+          education_history?: string | null
+          extracurriculars?: string | null
+          id?: string
+          languages?: string | null
+          photo_url?: string | null
+          soft_skills?: string | null
+          technical_skills?: string | null
+          updated_at?: string
+          user_id: string
+          work_experience?: string | null
+        }
+        Update: {
+          certifications?: string | null
+          created_at?: string
+          education_history?: string | null
+          extracurriculars?: string | null
+          id?: string
+          languages?: string | null
+          photo_url?: string | null
+          soft_skills?: string | null
+          technical_skills?: string | null
+          updated_at?: string
+          user_id?: string
+          work_experience?: string | null
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           created_at: string
@@ -81,6 +126,57 @@ export type Database = {
           message?: string
           status?: string
           subject?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      lor_responses: {
+        Row: {
+          courses_projects: string | null
+          created_at: string
+          grades_performance: string | null
+          id: string
+          key_strengths: string | null
+          recommender_designation: string | null
+          recommender_email: string | null
+          recommender_institution: string | null
+          recommender_name: string | null
+          relationship_duration: string | null
+          relationship_type: string | null
+          specific_examples: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          courses_projects?: string | null
+          created_at?: string
+          grades_performance?: string | null
+          id?: string
+          key_strengths?: string | null
+          recommender_designation?: string | null
+          recommender_email?: string | null
+          recommender_institution?: string | null
+          recommender_name?: string | null
+          relationship_duration?: string | null
+          relationship_type?: string | null
+          specific_examples?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          courses_projects?: string | null
+          created_at?: string
+          grades_performance?: string | null
+          id?: string
+          key_strengths?: string | null
+          recommender_designation?: string | null
+          recommender_email?: string | null
+          recommender_institution?: string | null
+          recommender_name?: string | null
+          relationship_duration?: string | null
+          relationship_type?: string | null
+          specific_examples?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -179,6 +275,84 @@ export type Database = {
           university_name?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      sop_responses: {
+        Row: {
+          academic_projects: string | null
+          challenges_accomplishments: string | null
+          created_at: string
+          current_education_status: string | null
+          date_of_birth: string | null
+          email: string | null
+          full_name: string | null
+          has_thesis: boolean | null
+          id: string
+          intended_program: string | null
+          linked_in: string | null
+          long_term_goals: string | null
+          nationality: string | null
+          personal_qualities: string | null
+          phone: string | null
+          short_term_goals: string | null
+          target_universities: string | null
+          thesis_details: string | null
+          updated_at: string
+          user_id: string
+          why_germany: string | null
+          why_this_program: string | null
+          work_experience: string | null
+        }
+        Insert: {
+          academic_projects?: string | null
+          challenges_accomplishments?: string | null
+          created_at?: string
+          current_education_status?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          has_thesis?: boolean | null
+          id?: string
+          intended_program?: string | null
+          linked_in?: string | null
+          long_term_goals?: string | null
+          nationality?: string | null
+          personal_qualities?: string | null
+          phone?: string | null
+          short_term_goals?: string | null
+          target_universities?: string | null
+          thesis_details?: string | null
+          updated_at?: string
+          user_id: string
+          why_germany?: string | null
+          why_this_program?: string | null
+          work_experience?: string | null
+        }
+        Update: {
+          academic_projects?: string | null
+          challenges_accomplishments?: string | null
+          created_at?: string
+          current_education_status?: string | null
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string | null
+          has_thesis?: boolean | null
+          id?: string
+          intended_program?: string | null
+          linked_in?: string | null
+          long_term_goals?: string | null
+          nationality?: string | null
+          personal_qualities?: string | null
+          phone?: string | null
+          short_term_goals?: string | null
+          target_universities?: string | null
+          thesis_details?: string | null
+          updated_at?: string
+          user_id?: string
+          why_germany?: string | null
+          why_this_program?: string | null
+          work_experience?: string | null
         }
         Relationships: []
       }

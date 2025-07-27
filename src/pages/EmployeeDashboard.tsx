@@ -371,13 +371,14 @@ const EmployeeDashboard = () => {
             <div className="lg:col-span-3">
               {selectedUserId ? (
                 <Tabs defaultValue="universities" className="w-full">
-                  <TabsList className="grid w-full grid-cols-5">
-                    <TabsTrigger value="universities">Universities</TabsTrigger>
-                    <TabsTrigger value="sops">SOPs</TabsTrigger>
-                    <TabsTrigger value="lors">LORs</TabsTrigger>
-                    <TabsTrigger value="documents">Documents</TabsTrigger>
-                    <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
-                  </TabsList>
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="universities">Universities</TabsTrigger>
+              <TabsTrigger value="sops">SOPs</TabsTrigger>
+              <TabsTrigger value="lors">LORs</TabsTrigger>
+              <TabsTrigger value="documents">Documents</TabsTrigger>
+              <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
+              <TabsTrigger value="questionnaire">Questionnaire</TabsTrigger>
+            </TabsList>
                   
                   <TabsContent value="universities" className="space-y-4">
                     <Card>

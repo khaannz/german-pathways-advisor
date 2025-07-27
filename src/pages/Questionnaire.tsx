@@ -1,19 +1,31 @@
-import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
-import Header from "@/components/Header";
-import { useToast } from "@/hooks/use-toast";
-import { FileText, GraduationCap, Award } from "lucide-react";
+import { Header } from "@/components/Header";
+import { SOPForm } from "@/components/forms/SOPForm";
+import { LORForm } from "@/components/forms/LORForm";
+import { CVForm } from "@/components/forms/CVForm";
 
-const questionnaireSchema = z.object({
+export function Questionnaire() {
+  return (
+    <div className="min-h-screen bg-background">
+      <Header />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto">
+          <h1 className="text-3xl font-bold text-center mb-8">
+            Application Questionnaire
+          </h1>
+          <p className="text-center text-muted-foreground mb-8">
+            Complete each section separately. Your progress is automatically saved.
+          </p>
+          
+          <div className="space-y-8">
+            <SOPForm />
+            <LORForm />
+            <CVForm />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
   // Personal Information
   fullName: z.string().min(2, "Full name is required"),
   email: z.string().email("Valid email is required"),
