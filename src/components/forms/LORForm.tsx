@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { RotateCcw, Trash2 } from "lucide-react";
 
 const lorSchema = z.object({
   recommender_name: z.string().min(2, "Recommender name is required"),
@@ -123,6 +125,59 @@ export function LORForm() {
         description: "Failed to save Letter of Recommendation information. Please try again.",
         variant: "destructive",
         duration: 7000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearForm = () => {
+    form.reset({
+      recommender_name: "",
+      recommender_designation: "",
+      recommender_institution: "",
+      recommender_email: "",
+      relationship_type: "",
+      relationship_duration: "",
+      courses_projects: "",
+      key_strengths: "",
+      specific_examples: "",
+      grades_performance: "",
+    });
+    toast({
+      title: "Form cleared",
+      description: "All form fields have been reset to default values.",
+      duration: 3000,
+    });
+  };
+
+  const handleDeleteForm = async () => {
+    if (!user || !existingResponse) return;
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("lor_responses")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "LOR form deleted successfully!",
+        duration: 5000,
+      });
+
+      setExistingResponse(null);
+      handleClearForm();
+    } catch (error) {
+      console.error("Error deleting LOR:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete LOR form. Please try again.",
+        variant: "destructive",
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -324,9 +379,41 @@ export function LORForm() {
               />
             </div>
 
-            <Button type="submit" disabled={loading}>
-              {loading ? "Saving..." : existingResponse ? "Update LOR Info" : "Save LOR Info"}
-            </Button>
+            <div className="flex flex-wrap gap-4">
+              <Button type="submit" disabled={loading}>
+                {loading ? "Saving..." : existingResponse ? "Update LOR" : "Save LOR"}
+              </Button>
+              
+              <Button type="button" variant="outline" onClick={handleClearForm}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Clear Form
+              </Button>
+              
+              {existingResponse && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Form
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your LOR form data.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteForm} disabled={loading}>
+                        {loading ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </form>
         </Form>
       </CardContent>

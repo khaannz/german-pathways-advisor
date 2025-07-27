@@ -95,6 +95,17 @@ const EmployeeDashboard = () => {
   const [lors, setLors] = useState<LOR[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [questionnaireResponses, setQuestionnaireResponses] = useState<{
+    sop: any;
+    lor: any;
+    cv: any;
+    educationEntries: any[];
+  }>({
+    sop: null,
+    lor: null,
+    cv: null,
+    educationEntries: [],
+  });
 
   useEffect(() => {
     if (!user || !isEmployee) {
@@ -122,12 +133,13 @@ const EmployeeDashboard = () => {
   const fetchUserData = async (userId: string) => {
     setLoading(true);
     
-    const [universitiesData, sopsData, lorsData, documentsData, enquiriesData] = await Promise.all([
+    const [universitiesData, sopsData, lorsData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
       supabase.from('shortlisted_universities').select('*').eq('user_id', userId),
       supabase.from('sops').select('*').eq('user_id', userId),
       supabase.from('lors').select('*').eq('user_id', userId),
       supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false })
+      supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+      fetchQuestionnaireResponses(userId)
     ]);
 
     setUniversities(universitiesData.data || []);
@@ -135,7 +147,24 @@ const EmployeeDashboard = () => {
     setLors(lorsData.data || []);
     setDocuments((documentsData.data || []) as Document[]);
     setEnquiries((enquiriesData.data || []) as Enquiry[]);
+    setQuestionnaireResponses(questionnaireData);
     setLoading(false);
+  };
+
+  const fetchQuestionnaireResponses = async (userId: string) => {
+    const [sopData, lorData, cvData, educationData] = await Promise.all([
+      supabase.from('sop_responses').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('lor_responses').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('cv_responses').select('*').eq('user_id', userId).maybeSingle(),
+      supabase.from('cv_education_entries').select('*').eq('user_id', userId).order('start_date', { ascending: true })
+    ]);
+
+    return {
+      sop: sopData.data,
+      lor: lorData.data,
+      cv: cvData.data,
+      educationEntries: educationData.data || [],
+    };
   };
 
   const handleAddUniversity = async (e: React.FormEvent) => {
@@ -377,7 +406,7 @@ const EmployeeDashboard = () => {
               <TabsTrigger value="lors">LORs</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
-              <TabsTrigger value="questionnaire">Questionnaire</TabsTrigger>
+              <TabsTrigger value="questionnaire">Responses</TabsTrigger>
             </TabsList>
                   
                   <TabsContent value="universities" className="space-y-4">
@@ -707,6 +736,235 @@ const EmployeeDashboard = () => {
                                 </div>
                               );
                             })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="questionnaire" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="h-4 w-4" />
+                          Questionnaire Responses
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {!questionnaireResponses.sop && !questionnaireResponses.lor && !questionnaireResponses.cv ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No questionnaire responses submitted by this student</p>
+                          </div>
+                        ) : (
+                          <div className="space-y-6">
+                            {/* SOP Response */}
+                            {questionnaireResponses.sop && (
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-lg">Statement of Purpose (SOP)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Personal Information</h4>
+                                      <div className="mt-2 space-y-2 text-sm">
+                                        <p><strong>Name:</strong> {questionnaireResponses.sop.full_name}</p>
+                                        <p><strong>Email:</strong> {questionnaireResponses.sop.email}</p>
+                                        <p><strong>Phone:</strong> {questionnaireResponses.sop.phone}</p>
+                                        <p><strong>Nationality:</strong> {questionnaireResponses.sop.nationality}</p>
+                                        {questionnaireResponses.sop.date_of_birth && (
+                                          <p><strong>Date of Birth:</strong> {format(new Date(questionnaireResponses.sop.date_of_birth), 'MMM dd, yyyy')}</p>
+                                        )}
+                                        {questionnaireResponses.sop.linked_in && (
+                                          <p><strong>LinkedIn:</strong> <a href={questionnaireResponses.sop.linked_in} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">View Profile</a></p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Academic & Program Details</h4>
+                                      <div className="mt-2 space-y-2 text-sm">
+                                        <p><strong>Current Education Status:</strong> {questionnaireResponses.sop.current_education_status}</p>
+                                        <p><strong>Intended Program:</strong> {questionnaireResponses.sop.intended_program}</p>
+                                        <p><strong>Target Universities:</strong> {questionnaireResponses.sop.target_universities}</p>
+                                        <p><strong>Has Thesis:</strong> {questionnaireResponses.sop.has_thesis ? 'Yes' : 'No'}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Why This Program</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.why_this_program}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Why Germany</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.why_germany}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Short-term Goals</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.short_term_goals}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Long-term Goals</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.long_term_goals}</p>
+                                    </div>
+                                    {questionnaireResponses.sop.thesis_details && (
+                                      <div>
+                                        <h4 className="font-medium text-sm text-muted-foreground">Thesis Details</h4>
+                                        <p className="mt-1 text-sm">{questionnaireResponses.sop.thesis_details}</p>
+                                      </div>
+                                    )}
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Academic Projects</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.academic_projects}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Work Experience</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.work_experience}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Personal Qualities</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.personal_qualities}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Challenges & Accomplishments</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.challenges_accomplishments}</p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* LOR Response */}
+                            {questionnaireResponses.lor && (
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-lg">Letter of Recommendation (LOR)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Recommender Information</h4>
+                                      <div className="mt-2 space-y-2 text-sm">
+                                        <p><strong>Name:</strong> {questionnaireResponses.lor.recommender_name}</p>
+                                        <p><strong>Designation:</strong> {questionnaireResponses.lor.recommender_designation}</p>
+                                        <p><strong>Institution:</strong> {questionnaireResponses.lor.recommender_institution}</p>
+                                        <p><strong>Email:</strong> {questionnaireResponses.lor.recommender_email}</p>
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Relationship Details</h4>
+                                      <div className="mt-2 space-y-2 text-sm">
+                                        <p><strong>Relationship Type:</strong> {questionnaireResponses.lor.relationship_type}</p>
+                                        <p><strong>Duration:</strong> {questionnaireResponses.lor.relationship_duration}</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Courses/Projects</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.courses_projects}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Key Strengths</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.key_strengths}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Specific Examples</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.specific_examples}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Grades & Performance</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.grades_performance}</p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
+
+                            {/* CV Response */}
+                            {questionnaireResponses.cv && (
+                              <Card>
+                                <CardHeader>
+                                  <CardTitle className="text-lg">Curriculum Vitae (CV)</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                  {questionnaireResponses.cv.photo_url && (
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Professional Photo</h4>
+                                      <div className="flex items-center gap-4">
+                                        <img
+                                          src={questionnaireResponses.cv.photo_url}
+                                          alt="Student's professional photo"
+                                          className="w-24 h-24 object-cover rounded-md"
+                                        />
+                                        <Button variant="outline" size="sm" asChild>
+                                          <a href={questionnaireResponses.cv.photo_url} target="_blank" rel="noopener noreferrer">
+                                            <Download className="h-4 w-4 mr-2" />
+                                            Download Photo
+                                          </a>
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Education History */}
+                                  {questionnaireResponses.educationEntries.length > 0 && (
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Education History</h4>
+                                      <div className="mt-2 space-y-3">
+                                        {questionnaireResponses.educationEntries.map((entry: any, index: number) => (
+                                          <div key={entry.id || index} className="border rounded-lg p-3">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                              <div>
+                                                <p className="font-medium">{entry.institution}</p>
+                                                <p className="text-sm text-muted-foreground">{entry.program}</p>
+                                              </div>
+                                              <div className="text-sm">
+                                                <p><strong>Start:</strong> {format(new Date(entry.start_date), 'MMM yyyy')}</p>
+                                                {entry.end_date && (
+                                                  <p><strong>End:</strong> {format(new Date(entry.end_date), 'MMM yyyy')}</p>
+                                                )}
+                                                {!entry.end_date && <p className="text-muted-foreground">Ongoing</p>}
+                                              </div>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="space-y-4">
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Work Experience</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.work_experience}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Technical Skills</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.technical_skills}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Soft Skills</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.soft_skills}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Languages</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.languages}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Certifications</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.certifications}</p>
+                                    </div>
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground">Extracurricular Activities</h4>
+                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.extracurriculars}</p>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            )}
                           </div>
                         )}
                       </CardContent>

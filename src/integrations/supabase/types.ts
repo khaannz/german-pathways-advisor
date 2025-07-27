@@ -14,6 +14,50 @@ export type Database = {
   }
   public: {
     Tables: {
+      cv_education_entries: {
+        Row: {
+          created_at: string
+          cv_response_id: string
+          end_date: string | null
+          id: string
+          institution: string
+          program: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          cv_response_id: string
+          end_date?: string | null
+          id?: string
+          institution: string
+          program: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          cv_response_id?: string
+          end_date?: string | null
+          id?: string
+          institution?: string
+          program?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cv_education_entries_cv_response_id_fkey"
+            columns: ["cv_response_id"]
+            isOneToOne: false
+            referencedRelation: "cv_responses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       cv_responses: {
         Row: {
           certifications: string | null

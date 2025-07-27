@@ -1,18 +1,31 @@
 import { useState, useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
+import { CalendarIcon, Plus, X, RotateCcw, Trash2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+const educationEntrySchema = z.object({
+  institution: z.string().min(2, "Institution name is required"),
+  program: z.string().min(2, "Program name is required"),
+  start_date: z.date({ message: "Start date is required" }),
+  end_date: z.date().optional(),
+});
 
 const cvSchema = z.object({
-  education_history: z.string().min(20, "Please provide at least 20 characters"),
+  education_entries: z.array(educationEntrySchema).min(1, "At least one education entry is required"),
   work_experience: z.string().min(15, "Please provide at least 15 characters"),
   technical_skills: z.string().min(15, "Please provide at least 15 characters"),
   soft_skills: z.string().min(15, "Please provide at least 15 characters"),
@@ -23,8 +36,23 @@ const cvSchema = z.object({
 
 type CVFormData = z.infer<typeof cvSchema>;
 
-interface CVResponse extends CVFormData {
+interface EducationEntry {
+  id?: string;
+  institution: string;
+  program: string;
+  start_date: Date;
+  end_date?: Date;
+}
+
+interface CVResponse {
+  id?: string;
   photo_url?: string;
+  work_experience: string;
+  technical_skills: string;
+  soft_skills: string;
+  languages: string;
+  certifications: string;
+  extracurriculars: string;
 }
 
 export function CVForm() {
@@ -38,7 +66,7 @@ export function CVForm() {
   const form = useForm<CVFormData>({
     resolver: zodResolver(cvSchema),
     defaultValues: {
-      education_history: "",
+      education_entries: [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
       work_experience: "",
       technical_skills: "",
       soft_skills: "",
@@ -46,6 +74,11 @@ export function CVForm() {
       certifications: "",
       extracurriculars: "",
     },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "education_entries",
   });
 
   useEffect(() => {
@@ -56,24 +89,42 @@ export function CVForm() {
 
   const loadExistingResponse = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: cvData, error: cvError } = await supabase
         .from("cv_responses")
         .select("*")
         .eq("user_id", user?.id)
         .maybeSingle();
 
-      if (error) throw error;
+      if (cvError) throw cvError;
 
-      if (data) {
-        setExistingResponse(data);
+      if (cvData) {
+        setExistingResponse(cvData);
+        
+        // Load education entries
+        const { data: educationData, error: educationError } = await supabase
+          .from("cv_education_entries")
+          .select("*")
+          .eq("user_id", user?.id)
+          .order("start_date", { ascending: true });
+
+        if (educationError) throw educationError;
+
+        const educationEntries = educationData?.map(entry => ({
+          id: entry.id,
+          institution: entry.institution,
+          program: entry.program,
+          start_date: new Date(entry.start_date),
+          end_date: entry.end_date ? new Date(entry.end_date) : undefined,
+        })) || [];
+
         form.reset({
-          education_history: data.education_history || "",
-          work_experience: data.work_experience || "",
-          technical_skills: data.technical_skills || "",
-          soft_skills: data.soft_skills || "",
-          languages: data.languages || "",
-          certifications: data.certifications || "",
-          extracurriculars: data.extracurriculars || "",
+          education_entries: educationEntries.length > 0 ? educationEntries : [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
+          work_experience: cvData.work_experience || "",
+          technical_skills: cvData.technical_skills || "",
+          soft_skills: cvData.soft_skills || "",
+          languages: cvData.languages || "",
+          certifications: cvData.certifications || "",
+          extracurriculars: cvData.extracurriculars || "",
         });
       }
     } catch (error) {
@@ -85,7 +136,6 @@ export function CVForm() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!['image/jpeg', 'image/png'].includes(file.type)) {
       toast({
         title: "Invalid file type",
@@ -95,7 +145,6 @@ export function CVForm() {
       return;
     }
 
-    // Validate file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         title: "File too large",
@@ -118,9 +167,7 @@ export function CVForm() {
 
       const { error: uploadError } = await supabase.storage
         .from('cv_photos')
-        .upload(fileName, selectedFile, {
-          upsert: true
-        });
+        .upload(fileName, selectedFile, { upsert: true });
 
       if (uploadError) throw uploadError;
 
@@ -149,7 +196,6 @@ export function CVForm() {
     try {
       let photoUrl = existingResponse?.photo_url;
 
-      // Upload new photo if selected
       if (selectedFile) {
         const uploadedUrl = await uploadPhoto();
         if (uploadedUrl) {
@@ -159,9 +205,16 @@ export function CVForm() {
 
       const cvData = {
         user_id: user.id,
-        ...data,
+        work_experience: data.work_experience,
+        technical_skills: data.technical_skills,
+        soft_skills: data.soft_skills,
+        languages: data.languages,
+        certifications: data.certifications,
+        extracurriculars: data.extracurriculars,
         photo_url: photoUrl,
       };
+
+      let cvResponseId = existingResponse?.id;
 
       if (existingResponse) {
         const { error } = await supabase
@@ -171,16 +224,42 @@ export function CVForm() {
 
         if (error) throw error;
       } else {
-        const { error } = await supabase
+        const { data: newCvResponse, error } = await supabase
           .from("cv_responses")
-          .insert(cvData);
+          .insert(cvData)
+          .select()
+          .single();
 
         if (error) throw error;
+        cvResponseId = newCvResponse.id;
       }
+
+      // Delete existing education entries
+      await supabase
+        .from("cv_education_entries")
+        .delete()
+        .eq("user_id", user.id);
+
+      // Insert new education entries
+      const educationEntries = data.education_entries.map(entry => ({
+        cv_response_id: cvResponseId,
+        user_id: user.id,
+        institution: entry.institution,
+        program: entry.program,
+        start_date: entry.start_date.toISOString().split('T')[0],
+        end_date: entry.end_date ? entry.end_date.toISOString().split('T')[0] : null,
+      }));
+
+      const { error: educationError } = await supabase
+        .from("cv_education_entries")
+        .insert(educationEntries);
+
+      if (educationError) throw educationError;
 
       toast({
         title: "Success",
         description: "CV information saved successfully!",
+        duration: 5000,
       });
 
       setSelectedFile(null);
@@ -191,6 +270,65 @@ export function CVForm() {
         title: "Error",
         description: "Failed to save CV information. Please try again.",
         variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClearForm = () => {
+    form.reset({
+      education_entries: [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
+      work_experience: "",
+      technical_skills: "",
+      soft_skills: "",
+      languages: "",
+      certifications: "",
+      extracurriculars: "",
+    });
+    setSelectedFile(null);
+    toast({
+      title: "Form cleared",
+      description: "All form fields have been reset to default values.",
+      duration: 3000,
+    });
+  };
+
+  const handleDeleteForm = async () => {
+    if (!user || !existingResponse) return;
+
+    setLoading(true);
+    try {
+      // Delete education entries first
+      await supabase
+        .from("cv_education_entries")
+        .delete()
+        .eq("user_id", user.id);
+
+      // Delete CV response
+      const { error } = await supabase
+        .from("cv_responses")
+        .delete()
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: "CV form deleted successfully!",
+        duration: 5000,
+      });
+
+      setExistingResponse(null);
+      handleClearForm();
+    } catch (error) {
+      console.error("Error deleting CV:", error);
+      toast({
+        title: "Error",
+        description: "Failed to delete CV form. Please try again.",
+        variant: "destructive",
+        duration: 5000,
       });
     } finally {
       setLoading(false);
@@ -241,24 +379,159 @@ export function CVForm() {
               </div>
             </div>
 
-            {/* Education */}
-            <FormField
-              control={form.control}
-              name="education_history"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Education History</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="List your educational qualifications, degrees, institutions, and graduation years..."
-                      className="min-h-[120px]"
-                      {...field}
+            {/* Dynamic Education History */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-base font-medium">Education History</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ institution: "", program: "", start_date: new Date(), end_date: undefined })}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Education
+                </Button>
+              </div>
+              
+              {fields.map((field, index) => (
+                <Card key={field.id} className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Education Entry {index + 1}</h4>
+                    {fields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => remove(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.institution`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Institution</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., University of Example"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.program`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Program/Degree</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Bachelor of Computer Science"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.start_date`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Start Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.end_date`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>End Date (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date (or leave blank if ongoing)</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </Card>
+              ))}
+            </div>
 
             {/* Work Experience */}
             <FormField
@@ -374,9 +647,42 @@ export function CVForm() {
               )}
             />
 
-            <Button type="submit" disabled={loading || uploading}>
-              {loading || uploading ? "Saving..." : existingResponse ? "Update CV" : "Save CV"}
-            </Button>
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-4">
+              <Button type="submit" disabled={loading || uploading}>
+                {loading || uploading ? "Saving..." : existingResponse ? "Update CV" : "Save CV"}
+              </Button>
+              
+              <Button type="button" variant="outline" onClick={handleClearForm}>
+                <RotateCcw className="h-4 w-4 mr-2" />
+                Clear Form
+              </Button>
+              
+              {existingResponse && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button type="button" variant="destructive">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Form
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete your CV form data and all education entries.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteForm} disabled={loading}>
+                        {loading ? "Deleting..." : "Delete"}
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
           </form>
         </Form>
       </CardContent>
