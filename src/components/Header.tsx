@@ -57,12 +57,6 @@ const Header = () => {
                       Dashboard
                     </a>
                   </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="/questionnaire" className="flex items-center">
-                      <FileText className="h-4 w-4 mr-2" />
-                      Document Questionnaire
-                    </a>
-                  </DropdownMenuItem>
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
                       <a href="/questionnaire" className="flex items-center">
