@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, FileText, GraduationCap, UserCheck } from 'lucide-react';
+import { ExternalLink, FileText, GraduationCap, UserCheck, Upload, File } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Header from '@/components/Header';
 
@@ -30,12 +30,22 @@ interface LOR {
   created_at: string;
 }
 
+interface Document {
+  id: string;
+  type: string;
+  title: string;
+  file_url: string | null;
+  drive_link: string | null;
+  created_at: string;
+}
+
 const Dashboard = () => {
   const { user, loading } = useAuth();
   const { toast } = useToast();
   const [universities, setUniversities] = useState<ShortlistedUniversity[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
   const [lors, setLors] = useState<LOR[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -75,9 +85,20 @@ const Dashboard = () => {
 
       if (lorsError) throw lorsError;
 
+      // Fetch Documents
+      const { data: documentsData, error: documentsError } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (documentsError) throw documentsError;
+
       setUniversities(universitiesData || []);
       setSops(sopsData || []);
       setLors(lorsData || []);
+      setDocuments(documentsData || []);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -209,6 +230,62 @@ const Dashboard = () => {
                       </Button>
                     </div>
                   ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Documents Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Upload className="h-5 w-5" />
+                Recent Documents
+              </CardTitle>
+              <CardDescription>
+                Your uploaded documents and files
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <File className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground mb-2">No documents uploaded yet</p>
+                  <Button variant="outline" size="sm" asChild>
+                    <a href="/documents">Upload Documents</a>
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid gap-4">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div>
+                        <h3 className="font-semibold text-foreground">{doc.title}</h3>
+                        <p className="text-sm text-muted-foreground">{doc.type}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Added: {new Date(doc.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {(doc.file_url || doc.drive_link) && (
+                        <Button variant="outline" size="sm" asChild>
+                          <a 
+                            href={doc.drive_link || doc.file_url!} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                  {documents.length >= 5 && (
+                    <div className="mt-4 text-center">
+                      <Button variant="outline" size="sm" asChild>
+                        <a href="/documents">View All Documents</a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
