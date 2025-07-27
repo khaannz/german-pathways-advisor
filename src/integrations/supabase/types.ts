@@ -103,6 +103,45 @@ export type Database = {
         }
         Relationships: []
       }
+      cv_work_experience_entries: {
+        Row: {
+          company: string
+          created_at: string
+          cv_response_id: string
+          description: string | null
+          end_date: string | null
+          id: string
+          position: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          company: string
+          created_at?: string
+          cv_response_id: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          position: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          company?: string
+          created_at?: string
+          cv_response_id?: string
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          position?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       documents: {
         Row: {
           created_at: string

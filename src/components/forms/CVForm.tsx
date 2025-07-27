@@ -24,9 +24,17 @@ const educationEntrySchema = z.object({
   end_date: z.date().optional(),
 });
 
+const workExperienceEntrySchema = z.object({
+  company: z.string().min(2, "Company name is required"),
+  position: z.string().min(2, "Position is required"),
+  start_date: z.date({ message: "Start date is required" }),
+  end_date: z.date().optional(),
+  description: z.string().min(10, "Please provide at least 10 characters"),
+});
+
 const cvSchema = z.object({
   education_entries: z.array(educationEntrySchema).min(1, "At least one education entry is required"),
-  work_experience: z.string().min(15, "Please provide at least 15 characters"),
+  work_experience_entries: z.array(workExperienceEntrySchema).min(1, "At least one work experience entry is required"),
   technical_skills: z.string().min(15, "Please provide at least 15 characters"),
   soft_skills: z.string().min(15, "Please provide at least 15 characters"),
   languages: z.string().min(15, "Please provide at least 15 characters"),
@@ -44,10 +52,18 @@ interface EducationEntry {
   end_date?: Date;
 }
 
+interface WorkExperienceEntry {
+  id?: string;
+  company: string;
+  position: string;
+  start_date: Date;
+  end_date?: Date;
+  description: string;
+}
+
 interface CVResponse {
   id?: string;
   photo_url?: string;
-  work_experience: string;
   technical_skills: string;
   soft_skills: string;
   languages: string;
@@ -67,7 +83,7 @@ export function CVForm() {
     resolver: zodResolver(cvSchema),
     defaultValues: {
       education_entries: [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
-      work_experience: "",
+      work_experience_entries: [{ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" }],
       technical_skills: "",
       soft_skills: "",
       languages: "",
@@ -76,9 +92,14 @@ export function CVForm() {
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: educationFields, append: appendEducation, remove: removeEducation } = useFieldArray({
     control: form.control,
     name: "education_entries",
+  });
+
+  const { fields: workExperienceFields, append: appendWorkExperience, remove: removeWorkExperience } = useFieldArray({
+    control: form.control,
+    name: "work_experience_entries",
   });
 
   useEffect(() => {
@@ -109,6 +130,15 @@ export function CVForm() {
 
         if (educationError) throw educationError;
 
+        // Load work experience entries
+        const { data: workExperienceData, error: workExperienceError } = await supabase
+          .from("cv_work_experience_entries")
+          .select("*")
+          .eq("user_id", user?.id)
+          .order("start_date", { ascending: true });
+
+        if (workExperienceError) throw workExperienceError;
+
         const educationEntries = educationData?.map(entry => ({
           id: entry.id,
           institution: entry.institution,
@@ -117,9 +147,18 @@ export function CVForm() {
           end_date: entry.end_date ? new Date(entry.end_date) : undefined,
         })) || [];
 
+        const workExperienceEntries = workExperienceData?.map(entry => ({
+          id: entry.id,
+          company: entry.company,
+          position: entry.position,
+          start_date: new Date(entry.start_date),
+          end_date: entry.end_date ? new Date(entry.end_date) : undefined,
+          description: entry.description || "",
+        })) || [];
+
         form.reset({
           education_entries: educationEntries.length > 0 ? educationEntries : [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
-          work_experience: cvData.work_experience || "",
+          work_experience_entries: workExperienceEntries.length > 0 ? workExperienceEntries : [{ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" }],
           technical_skills: cvData.technical_skills || "",
           soft_skills: cvData.soft_skills || "",
           languages: cvData.languages || "",
@@ -205,7 +244,6 @@ export function CVForm() {
 
       const cvData = {
         user_id: user.id,
-        work_experience: data.work_experience,
         technical_skills: data.technical_skills,
         soft_skills: data.soft_skills,
         languages: data.languages,
@@ -240,6 +278,12 @@ export function CVForm() {
         .delete()
         .eq("user_id", user.id);
 
+      // Delete existing work experience entries
+      await supabase
+        .from("cv_work_experience_entries")
+        .delete()
+        .eq("user_id", user.id);
+
       // Insert new education entries
       const educationEntries = data.education_entries.map(entry => ({
         cv_response_id: cvResponseId,
@@ -255,6 +299,23 @@ export function CVForm() {
         .insert(educationEntries);
 
       if (educationError) throw educationError;
+
+      // Insert new work experience entries
+      const workExperienceEntries = data.work_experience_entries.map(entry => ({
+        cv_response_id: cvResponseId,
+        user_id: user.id,
+        company: entry.company,
+        position: entry.position,
+        start_date: entry.start_date.toISOString().split('T')[0],
+        end_date: entry.end_date ? entry.end_date.toISOString().split('T')[0] : null,
+        description: entry.description,
+      }));
+
+      const { error: workExperienceError } = await supabase
+        .from("cv_work_experience_entries")
+        .insert(workExperienceEntries);
+
+      if (workExperienceError) throw workExperienceError;
 
       toast({
         title: "Success",
@@ -280,7 +341,7 @@ export function CVForm() {
   const handleClearForm = () => {
     form.reset({
       education_entries: [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
-      work_experience: "",
+      work_experience_entries: [{ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" }],
       technical_skills: "",
       soft_skills: "",
       languages: "",
@@ -303,6 +364,12 @@ export function CVForm() {
       // Delete education entries first
       await supabase
         .from("cv_education_entries")
+        .delete()
+        .eq("user_id", user.id);
+
+      // Delete work experience entries
+      await supabase
+        .from("cv_work_experience_entries")
         .delete()
         .eq("user_id", user.id);
 
@@ -387,23 +454,23 @@ export function CVForm() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={() => append({ institution: "", program: "", start_date: new Date(), end_date: undefined })}
+                  onClick={() => appendEducation({ institution: "", program: "", start_date: new Date(), end_date: undefined })}
                 >
                   <Plus className="h-4 w-4 mr-2" />
                   Add Education
                 </Button>
               </div>
               
-              {fields.map((field, index) => (
+              {educationFields.map((field, index) => (
                 <Card key={field.id} className="p-4">
                   <div className="flex items-center justify-between mb-4">
                     <h4 className="font-medium">Education Entry {index + 1}</h4>
-                    {fields.length > 1 && (
+                    {educationFields.length > 1 && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => remove(index)}
+                        onClick={() => removeEducation(index)}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -533,24 +600,177 @@ export function CVForm() {
               ))}
             </div>
 
-            {/* Work Experience */}
-            <FormField
-              control={form.control}
-              name="work_experience"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Work Experience</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Describe your work experience, internships, and professional roles..."
-                      className="min-h-[120px]"
-                      {...field}
+            {/* Dynamic Work Experience */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <FormLabel className="text-base font-medium">Work Experience</FormLabel>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => appendWorkExperience({ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" })}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Work Experience
+                </Button>
+              </div>
+              
+              {workExperienceFields.map((field, index) => (
+                <Card key={field.id} className="p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="font-medium">Work Experience Entry {index + 1}</h4>
+                    {workExperienceFields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeWorkExperience(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.company`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Company/Organization</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Tech Solutions Inc."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
                     />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.position`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Position/Role</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Software Developer Intern"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.start_date`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>Start Date</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.end_date`}
+                      render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                          <FormLabel>End Date (Optional)</FormLabel>
+                          <Popover>
+                            <PopoverTrigger asChild>
+                              <FormControl>
+                                <Button
+                                  variant="outline"
+                                  className={cn(
+                                    "pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                  )}
+                                >
+                                  {field.value ? (
+                                    format(field.value, "PPP")
+                                  ) : (
+                                    <span>Pick a date (or leave blank if ongoing)</span>
+                                  )}
+                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                              </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                              <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                disabled={(date) => date > new Date()}
+                                initialFocus
+                                className="p-3 pointer-events-auto"
+                              />
+                            </PopoverContent>
+                          </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <FormField
+                    control={form.control}
+                    name={`work_experience_entries.${index}.description`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Description</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Describe your responsibilities and achievements..."
+                            className="min-h-[100px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </Card>
+              ))}
+            </div>
 
             {/* Skills */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
