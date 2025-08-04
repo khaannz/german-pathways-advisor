@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,10 +9,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2, Save, Clock, CheckCircle } from "lucide-react";
 
 const sopSchema = z.object({
   full_name: z.string().min(2, "Full name is required"),
@@ -44,10 +45,15 @@ export function SOPForm() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [existingResponse, setExistingResponse] = useState<SOPFormData | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionDate, setSubmissionDate] = useState<string | null>(null);
 
   const form = useForm<SOPFormData>({
     resolver: zodResolver(sopSchema),
+    mode: "onChange", // Enable real-time validation
     defaultValues: {
       full_name: "",
       email: "",
@@ -72,14 +78,52 @@ export function SOPForm() {
   });
 
   const hasThesis = form.watch("has_thesis");
+  const watchedValues = form.watch(); // Watch all form values for auto-save
+
+  // Auto-save functionality
+  const autoSave = useCallback(async (data: SOPFormData) => {
+    if (!user || isAutoSaving || loading) return;
+    
+    setIsAutoSaving(true);
+    try {
+      const sopData = {
+        user_id: user.id,
+        ...data,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase
+        .from("sop_responses")
+        .upsert(sopData, { onConflict: 'user_id' });
+
+      if (error) throw error;
+      
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [user, isAutoSaving, loading]);
+
+  // Auto-save when form values change (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (form.formState.isDirty && !form.formState.isSubmitting) {
+        autoSave(watchedValues);
+      }
+    }, 3000); // Auto-save after 3 seconds of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [watchedValues, form.formState.isDirty, form.formState.isSubmitting, autoSave]);
 
   useEffect(() => {
     if (user) {
-      loadExistingResponse();
+      loadExistingResponse(true); // Set isSubmitted to true on initial load
     }
   }, [user]);
 
-  const loadExistingResponse = async () => {
+  const loadExistingResponse = async (setSubmittedStatus = false) => {
     try {
       const { data, error } = await supabase
         .from("sop_responses")
@@ -91,6 +135,16 @@ export function SOPForm() {
 
       if (data) {
         setExistingResponse(data);
+        // Set submitted status based on parameter
+        if (setSubmittedStatus) {
+          setIsSubmitted(true);
+        }
+        
+        // Store submission date
+        if (data.created_at) {
+          setSubmissionDate(data.created_at);
+        }
+        
         form.reset({
           full_name: data.full_name || "",
           email: data.email || "",
@@ -149,12 +203,16 @@ export function SOPForm() {
         duration: 5000,
       });
 
-      loadExistingResponse();
-    } catch (error) {
+      // Reset form dirty state and update last saved
+      setIsSubmitted(true);
+      form.reset(data);
+      setLastSaved(new Date());
+      loadExistingResponse(false); // Don't override isSubmitted since we just set it
+    } catch (error: any) {
       console.error("Error saving SOP:", error);
       toast({
         title: "Error",
-        description: "Failed to save Statement of Purpose. Please try again.",
+        description: error?.message || "Failed to save Statement of Purpose. Please try again.",
         variant: "destructive",
         duration: 7000,
       });
@@ -228,14 +286,77 @@ export function SOPForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Statement of Purpose</CardTitle>
-        <CardDescription>
-          Provide information for your Statement of Purpose document
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Statement of Purpose</CardTitle>
+            <CardDescription>
+              Provide information for your Statement of Purpose document
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isAutoSaving && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
+            {lastSaved && !isAutoSaving && (
+              <div className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Saved {lastSaved.toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {isSubmitted ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">SOP Form Submitted!</h3>
+                <p className="text-gray-600 mb-4">
+                  Your Statement of Purpose information has been successfully submitted and is being processed by our team.
+                </p>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">Form Submitted Successfully</h4>
+                  <p className="text-sm text-green-700">
+                    Thank you for submitting your SOP information. Our team will review your details and get back to you soon.
+                  </p>
+                  {submissionDate && (
+                    <p className="text-xs text-green-600 mt-2">
+                      Submitted on: {new Date(submissionDate).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex justify-center gap-4 pt-4 border-t mt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsSubmitted(false);
+                      // Reset form to allow editing while keeping existing data
+                      if (existingResponse) {
+                        loadExistingResponse(false); // Don't set isSubmitted to true
+                      }
+                    }}
+                    className="text-gray-600"
+                  >
+                    Edit Submission
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Personal Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -599,11 +720,21 @@ export function SOPForm() {
             </div>
 
             <div className="flex flex-wrap gap-4">
-              <Button type="submit" disabled={loading}>
-                {loading ? "Saving..." : existingResponse ? "Update SOP" : "Save SOP"}
+              <Button type="submit" disabled={loading || isAutoSaving}>
+                {loading ? (
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-4 w-4 animate-spin" />
+                    Saving...
+                  </div>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4 mr-2" />
+                    {existingResponse ? "Update SOP" : "Save SOP"}
+                  </>
+                )}
               </Button>
               
-              <Button type="button" variant="outline" onClick={handleClearForm}>
+              <Button type="button" variant="outline" onClick={handleClearForm} disabled={loading}>
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Clear Form
               </Button>
@@ -635,6 +766,7 @@ export function SOPForm() {
             </div>
           </form>
         </Form>
+        )}
       </CardContent>
     </Card>
   );

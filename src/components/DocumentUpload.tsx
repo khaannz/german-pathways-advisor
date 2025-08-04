@@ -58,16 +58,22 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
     const filePath = `${user!.id}/${fileName}`;
 
+    console.log('Uploading file:', { filePath, fileName, fileSize: file.size });
+
     const { error: uploadError } = await supabase.storage
       .from('documents')
       .upload(filePath, file);
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw uploadError;
+    }
 
     const { data: urlData } = supabase.storage
       .from('documents')
       .getPublicUrl(filePath);
 
+    console.log('File uploaded successfully:', urlData.publicUrl);
     return urlData.publicUrl;
   };
 
@@ -102,11 +108,20 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       let mimeType = null;
 
       if (formData.file) {
+        console.log('Starting file upload...');
         fileUrl = await uploadFile(formData.file);
         fileName = formData.file.name;
         fileSize = formData.file.size;
         mimeType = formData.file.type;
       }
+
+      console.log('Inserting document record:', {
+        user_id: user.id,
+        type: formData.type,
+        title: formData.title,
+        file_url: fileUrl,
+        drive_link: formData.driveLink || null
+      });
 
       const { error } = await supabase
         .from('documents')
@@ -121,8 +136,12 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
           mime_type: mimeType
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Database insert error:', error);
+        throw error;
+      }
 
+      console.log('Document saved successfully');
       toast({
         title: "Document uploaded successfully",
         description: "Your document has been saved"
@@ -137,9 +156,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
 
       if (onSuccess) onSuccess();
     } catch (error: any) {
+      console.error('Upload process failed:', error);
       toast({
         title: "Upload failed",
-        description: error.message || "Failed to upload document",
+        description: error.message || "Failed to upload document. Please check the console for details.",
         variant: "destructive"
       });
     } finally {
@@ -215,14 +235,17 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
             />
           </div>
 
-          <Button type="submit" disabled={loading} className="w-full">
+          <Button type="submit" disabled={loading} className="w-full h-12 text-base font-medium bg-gradient-to-r from-primary to-purple-600 hover:from-primary/90 hover:to-purple-600/90">
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading...
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Uploading Document...
               </>
             ) : (
-              'Upload Document'
+              <>
+                <Upload className="mr-2 h-5 w-5" />
+                Upload Document
+              </>
             )}
           </Button>
         </form>

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { GraduationCap, Phone, Mail, LogOut, User, FileText, Upload, MessageSquare } from "lucide-react";
 import { useAuth } from "@/components/AuthContext";
 import { 
@@ -52,46 +53,48 @@ const Header = () => {
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem asChild>
-                    <a href="/dashboard" className="flex items-center">
+                    <Link to="/dashboard" className="flex items-center">
                       <User className="h-4 w-4 mr-2" />
                       Dashboard
-                    </a>
+                    </Link>
                   </DropdownMenuItem>
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
-                      <a href="/questionnaire" className="flex items-center">
+                      <Link to="/questionnaire" className="flex items-center">
                         <FileText className="h-4 w-4 mr-2" />
                         Application Questionnaire
-                      </a>
+                      </Link>
                     </DropdownMenuItem>
                   )}
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
-                      <a href="/documents" className="flex items-center">
+                      <Link to="/documents" className="flex items-center">
                         <Upload className="h-4 w-4 mr-2" />
                         My Documents
-                      </a>
+                      </Link>
                     </DropdownMenuItem>
                   )}
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
-                      <a href="/enquiries" className="flex items-center">
+                      <Link to="/enquiries" className="flex items-center">
                         <MessageSquare className="h-4 w-4 mr-2" />
                         Contact Support
-                      </a>
+                      </Link>
                     </DropdownMenuItem>
                   )}
                   {isEmployee && (
                     <DropdownMenuItem asChild>
-                      <a href="/employee-dashboard" className="flex items-center">
+                      <Link to="/employee-dashboard" className="flex items-center">
                         <User className="h-4 w-4 mr-2" />
                         Employee Dashboard
-                      </a>
+                      </Link>
                     </DropdownMenuItem>
                   )}
-                  <DropdownMenuItem>
-                    <User className="h-4 w-4 mr-2" />
-                    Profile
+                  <DropdownMenuItem asChild>
+                    <Link to="/profile" className="flex items-center">
+                      <User className="h-4 w-4 mr-2" />
+                      Profile
+                    </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={signOut}>
                     <LogOut className="h-4 w-4 mr-2" />
@@ -101,7 +104,7 @@ const Header = () => {
               </DropdownMenu>
             ) : (
               <Button variant="hero" size="sm" asChild>
-                <a href="/auth">Sign In</a>
+                <Link to="/auth">Sign In</Link>
               </Button>
             )}
           </div>

@@ -12,16 +12,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
-import { CalendarIcon, Plus, X, RotateCcw, Trash2, Save, Clock, CheckCircle } from "lucide-react";
+import { CalendarIcon, Plus, X, RotateCcw, Trash2, Save, Clock, CheckCircle, Upload, Eye, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+// Enhanced validation schemas
 const educationEntrySchema = z.object({
   institution: z.string().min(2, "Institution name is required"),
   program: z.string().min(2, "Program name is required"),
   start_date: z.date({ message: "Start date is required" }),
   end_date: z.date().optional(),
+  gpa: z.string().optional(),
+  achievements: z.string().optional(),
 });
 
 const workExperienceEntrySchema = z.object({
@@ -30,6 +35,8 @@ const workExperienceEntrySchema = z.object({
   start_date: z.date({ message: "Start date is required" }),
   end_date: z.date().optional(),
   description: z.string().min(10, "Please provide at least 10 characters"),
+  technologies: z.string().optional(),
+  achievements: z.string().optional(),
 });
 
 const cvSchema = z.object({
@@ -40,6 +47,7 @@ const cvSchema = z.object({
   languages: z.string().min(15, "Please provide at least 15 characters"),
   certifications: z.string().min(15, "Please provide at least 15 characters"),
   extracurriculars: z.string().min(15, "Please provide at least 15 characters"),
+  summary: z.string().min(50, "Please provide a professional summary (at least 50 characters)"),
 });
 
 type CVFormData = z.infer<typeof cvSchema>;
@@ -50,6 +58,8 @@ interface EducationEntry {
   program: string;
   start_date: Date;
   end_date?: Date;
+  gpa?: string;
+  achievements?: string;
 }
 
 interface WorkExperienceEntry {
@@ -59,6 +69,8 @@ interface WorkExperienceEntry {
   start_date: Date;
   end_date?: Date;
   description: string;
+  technologies?: string;
+  achievements?: string;
 }
 
 interface CVResponse {
@@ -70,13 +82,14 @@ interface CVResponse {
   languages: string;
   certifications: string;
   extracurriculars: string;
+  summary: string;
   education_history?: string;
   work_experience?: string;
   created_at?: string;
   updated_at?: string;
 }
 
-export function CVForm() {
+export function CVFormEnhanced() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -85,9 +98,13 @@ export function CVForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionDate, setSubmissionDate] = useState<string | null>(null);
+  const [isAutoSaving, setIsAutoSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<Date | null>(null);
+  const [progress, setProgress] = useState(0);
 
   const form = useForm<CVFormData>({
     resolver: zodResolver(cvSchema),
+    mode: "onChange",
     defaultValues: {
       education_entries: [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
       work_experience_entries: [{ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" }],
@@ -96,6 +113,7 @@ export function CVForm() {
       languages: "",
       certifications: "",
       extracurriculars: "",
+      summary: "",
     },
   });
 
@@ -109,70 +127,106 @@ export function CVForm() {
     name: "work_experience_entries",
   });
 
+  // Calculate form completion progress
+  const calculateProgress = useCallback(() => {
+    const values = form.getValues();
+    const totalFields = 7; // summary, technical_skills, soft_skills, languages, certifications, extracurriculars, education_entries, work_experience_entries
+    let completedFields = 0;
+
+    if (values.summary && values.summary.length >= 50) completedFields++;
+    if (values.technical_skills && values.technical_skills.length >= 15) completedFields++;
+    if (values.soft_skills && values.soft_skills.length >= 15) completedFields++;
+    if (values.languages && values.languages.length >= 15) completedFields++;
+    if (values.certifications && values.certifications.length >= 15) completedFields++;
+    if (values.extracurriculars && values.extracurriculars.length >= 15) completedFields++;
+    
+    // Check if at least one education and work experience entry is complete
+    const hasCompleteEducation = values.education_entries.some(entry => 
+      entry.institution && entry.program && entry.start_date
+    );
+    const hasCompleteWork = values.work_experience_entries.some(entry => 
+      entry.company && entry.position && entry.start_date && entry.description
+    );
+    
+    if (hasCompleteEducation) completedFields++;
+    if (hasCompleteWork) completedFields++;
+
+    setProgress((completedFields / totalFields) * 100);
+  }, [form]);
+
+  // Auto-save functionality
+  const autoSave = useCallback(async (data: CVFormData) => {
+    if (!user || isAutoSaving || loading) return;
+    
+    setIsAutoSaving(true);
+    try {
+      let photoUrl = existingResponse?.photo_url;
+
+      if (selectedFile) {
+        const uploadedUrl = await uploadPhoto();
+        if (uploadedUrl) {
+          photoUrl = uploadedUrl;
+        }
+      }
+
+      const cvData = {
+        user_id: user.id,
+        technical_skills: data.technical_skills,
+        soft_skills: data.soft_skills,
+        languages: data.languages,
+        certifications: data.certifications,
+        extracurriculars: data.extracurriculars,
+        summary: data.summary,
+        photo_url: photoUrl,
+      };
+
+      if (existingResponse) {
+        await supabase
+          .from("cv_responses")
+          .update(cvData)
+          .eq("user_id", user.id);
+      } else {
+        const { data: newCvResponse } = await supabase
+          .from("cv_responses")
+          .insert(cvData)
+          .select()
+          .single();
+        
+        if (newCvResponse) {
+          setExistingResponse(newCvResponse);
+        }
+      }
+
+      setLastSaved(new Date());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [user, isAutoSaving, loading, existingResponse, selectedFile]);
+
+  // Auto-save when form values change (with debounce)
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (form.formState.isDirty && !form.formState.isSubmitting) {
+        const values = form.getValues();
+        autoSave(values);
+      }
+    }, 3000); // Auto-save after 3 seconds of inactivity
+
+    return () => clearTimeout(timeoutId);
+  }, [form.watch(), form.formState.isDirty, form.formState.isSubmitting, autoSave]);
+
+  // Update progress when form changes
+  useEffect(() => {
+    calculateProgress();
+  }, [form.watch(), calculateProgress]);
+
   useEffect(() => {
     if (user) {
-      loadExistingResponse(true); // Set isSubmitted to true on initial load
+      loadExistingResponse(true);
     }
   }, [user]);
-
-  // Debug: Watch form values
-  useEffect(() => {
-    const subscription = form.watch((value) => {
-      console.log("Form values changed:", value);
-    });
-    return () => subscription.unsubscribe();
-  }, [form.watch]);
-
-  const loadFormData = useCallback((formData: any) => {
-    try {
-      console.log("Loading form data:", formData);
-      
-      // Use setValue for each field individually to ensure proper updates
-      form.setValue('technical_skills', formData.technical_skills || '');
-      form.setValue('soft_skills', formData.soft_skills || '');
-      form.setValue('languages', formData.languages || '');
-      form.setValue('certifications', formData.certifications || '');
-      form.setValue('extracurriculars', formData.extracurriculars || '');
-      
-      // Handle education entries
-      if (formData.education_entries && formData.education_entries.length > 0) {
-        // First, clear existing entries except the first one
-        const currentEducationCount = educationFields.length;
-        for (let i = currentEducationCount - 1; i > 0; i--) {
-          removeEducation(i);
-        }
-        
-        // Set the first entry
-        form.setValue('education_entries.0', formData.education_entries[0]);
-        
-        // Add additional entries
-        for (let i = 1; i < formData.education_entries.length; i++) {
-          appendEducation(formData.education_entries[i]);
-        }
-      }
-      
-      // Handle work experience entries
-      if (formData.work_experience_entries && formData.work_experience_entries.length > 0) {
-        // First, clear existing entries except the first one
-        const currentWorkCount = workExperienceFields.length;
-        for (let i = currentWorkCount - 1; i > 0; i--) {
-          removeWorkExperience(i);
-        }
-        
-        // Set the first entry
-        form.setValue('work_experience_entries.0', formData.work_experience_entries[0]);
-        
-        // Add additional entries
-        for (let i = 1; i < formData.work_experience_entries.length; i++) {
-          appendWorkExperience(formData.work_experience_entries[i]);
-        }
-      }
-      
-      console.log("Form data loaded successfully");
-    } catch (error) {
-      console.error("Error loading form data:", error);
-    }
-  }, [form, educationFields.length, workExperienceFields.length, removeEducation, appendEducation, removeWorkExperience, appendWorkExperience]);
 
   const loadExistingResponse = async (setSubmittedStatus = false) => {
     try {
@@ -186,12 +240,10 @@ export function CVForm() {
 
       if (cvData) {
         setExistingResponse(cvData);
-        // Set submitted status based on parameter
         if (setSubmittedStatus) {
           setIsSubmitted(true);
         }
         
-        // Store submission date
         if (cvData.created_at) {
           setSubmissionDate(cvData.created_at);
         }
@@ -220,6 +272,8 @@ export function CVForm() {
           program: entry.program,
           start_date: new Date(entry.start_date),
           end_date: entry.end_date ? new Date(entry.end_date) : undefined,
+          gpa: entry.gpa || "",
+          achievements: entry.achievements || "",
         })) || [];
 
         const workExperienceEntries = workExperienceData?.map(entry => ({
@@ -229,19 +283,9 @@ export function CVForm() {
           start_date: new Date(entry.start_date),
           end_date: entry.end_date ? new Date(entry.end_date) : undefined,
           description: entry.description || "",
+          technologies: entry.technologies || "",
+          achievements: entry.achievements || "",
         })) || [];
-
-        console.log("Loading CV data:", {
-          educationEntries,
-          workExperienceEntries,
-          cvData: {
-            technical_skills: cvData.technical_skills,
-            soft_skills: cvData.soft_skills,
-            languages: cvData.languages,
-            certifications: cvData.certifications,
-            extracurriculars: cvData.extracurriculars,
-          }
-        });
 
         const formData = {
           education_entries: educationEntries.length > 0 ? educationEntries : [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
@@ -251,43 +295,14 @@ export function CVForm() {
           languages: cvData.languages || "",
           certifications: cvData.certifications || "",
           extracurriculars: cvData.extracurriculars || "",
+          summary: cvData.summary || "",
         };
 
-        console.log("Form data being set:", formData);
-        
-        // Use the dedicated function to load form data
-        setTimeout(() => {
-          loadFormData(formData);
-        }, 50);
+        form.reset(formData);
       }
     } catch (error) {
       console.error("Error loading CV response:", error);
     }
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!['image/jpeg', 'image/png'].includes(file.type)) {
-      toast({
-        title: "Invalid file type",
-        description: "Please select a JPEG or PNG image.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        title: "File too large",
-        description: "Please select an image smaller than 5MB.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setSelectedFile(file);
   };
 
   const uploadPhoto = async (): Promise<string | null> => {
@@ -322,13 +337,33 @@ export function CVForm() {
     }
   };
 
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!['image/jpeg', 'image/png'].includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please select a JPEG or PNG image.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please select an image smaller than 5MB.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSelectedFile(file);
+  };
+
   const onSubmit = async (data: CVFormData) => {
     if (!user) return;
-
-    console.log("Form submission data:", data);
-    console.log("Education entries:", data.education_entries);
-    console.log("Work experience entries:", data.work_experience_entries);
-    console.log("Current form values:", form.getValues());
 
     setLoading(true);
     try {
@@ -348,6 +383,7 @@ export function CVForm() {
         languages: data.languages,
         certifications: data.certifications,
         extracurriculars: data.extracurriculars,
+        summary: data.summary,
         photo_url: photoUrl,
       };
 
@@ -371,13 +407,12 @@ export function CVForm() {
         cvResponseId = newCvResponse.id;
       }
 
-      // Delete existing education entries
+      // Delete existing entries
       await supabase
         .from("cv_education_entries")
         .delete()
         .eq("user_id", user.id);
 
-      // Delete existing work experience entries
       await supabase
         .from("cv_work_experience_entries")
         .delete()
@@ -391,6 +426,8 @@ export function CVForm() {
         program: entry.program,
         start_date: entry.start_date.toISOString().split('T')[0],
         end_date: entry.end_date ? entry.end_date.toISOString().split('T')[0] : null,
+        gpa: entry.gpa || null,
+        achievements: entry.achievements || null,
       }));
 
       const { error: educationError } = await supabase
@@ -408,6 +445,8 @@ export function CVForm() {
         start_date: entry.start_date.toISOString().split('T')[0],
         end_date: entry.end_date ? entry.end_date.toISOString().split('T')[0] : null,
         description: entry.description,
+        technologies: entry.technologies || null,
+        achievements: entry.achievements || null,
       }));
 
       const { error: workExperienceError } = await supabase
@@ -423,7 +462,9 @@ export function CVForm() {
       });
 
       setSelectedFile(null);
-      loadExistingResponse(true); // Set isSubmitted to true after successful submission
+      setIsSubmitted(true);
+      setLastSaved(new Date());
+      loadExistingResponse(false);
     } catch (error) {
       console.error("Error saving CV:", error);
       toast({
@@ -446,6 +487,7 @@ export function CVForm() {
       languages: "",
       certifications: "",
       extracurriculars: "",
+      summary: "",
     });
     setSelectedFile(null);
     toast({
@@ -460,19 +502,16 @@ export function CVForm() {
 
     setLoading(true);
     try {
-      // Delete education entries first
       await supabase
         .from("cv_education_entries")
         .delete()
         .eq("user_id", user.id);
 
-      // Delete work experience entries
       await supabase
         .from("cv_work_experience_entries")
         .delete()
         .eq("user_id", user.id);
 
-      // Delete CV response
       const { error } = await supabase
         .from("cv_responses")
         .delete()
@@ -508,9 +547,7 @@ export function CVForm() {
         <CardHeader className="text-center">
           <div className="flex items-center justify-center mb-4">
             <div className="p-3 bg-green-100 rounded-full">
-              <svg className="h-8 w-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+              <CheckCircle className="h-8 w-8 text-green-600" />
             </div>
           </div>
           <CardTitle className="text-green-800">CV Form Submitted Successfully!</CardTitle>
@@ -540,19 +577,10 @@ export function CVForm() {
           <div className="flex justify-center gap-4 pt-4 border-t">
             <Button 
               variant="outline" 
-              onClick={async () => {
-                console.log("Edit button clicked - Before:", { isSubmitted, existingResponse: !!existingResponse });
+              onClick={() => {
                 setIsSubmitted(false);
-                console.log("Edit button clicked - After setIsSubmitted(false)");
-                
-                // Small delay to ensure state updates
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                // Reset form to allow editing while keeping existing data
                 if (existingResponse) {
-                  console.log("Loading existing response for editing");
-                  // This ensures the form is properly loaded with existing data for editing
-                  await loadExistingResponse(false); // Don't set isSubmitted to true
+                  loadExistingResponse(false);
                 }
               }}
               className="text-gray-600"
@@ -568,14 +596,71 @@ export function CVForm() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Curriculum Vitae (CV)</CardTitle>
-        <CardDescription>
-          Provide your educational background, skills, and experience for your CV
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Enhanced Curriculum Vitae (CV)</CardTitle>
+            <CardDescription>
+              Create a comprehensive CV with auto-save and progress tracking
+            </CardDescription>
+          </div>
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isAutoSaving && (
+              <div className="flex items-center gap-1">
+                <Clock className="h-4 w-4 animate-spin" />
+                <span>Saving...</span>
+              </div>
+            )}
+            {lastSaved && !isAutoSaving && (
+              <div className="flex items-center gap-1">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                <span>Saved {lastSaved.toLocaleTimeString()}</span>
+              </div>
+            )}
+          </div>
+        </div>
+        
+        {/* Progress Bar */}
+        <div className="mt-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">Form Completion</span>
+            <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
+          </div>
+          <Progress value={progress} className="h-2" />
+          <div className="flex items-center gap-2 mt-2">
+            <Badge variant={progress >= 100 ? "default" : progress >= 75 ? "secondary" : "outline"}>
+              {progress >= 100 ? "Complete" : progress >= 75 ? "Almost Done" : "In Progress"}
+            </Badge>
+          </div>
+        </div>
       </CardHeader>
+      
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            {/* Professional Summary */}
+            <div className="space-y-4">
+              <FormField
+                control={form.control}
+                name="summary"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Professional Summary *</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Write a compelling professional summary that highlights your key strengths, experience, and career objectives..."
+                        className="min-h-[120px]"
+                        {...field}
+                      />
+                    </FormControl>
+                    <div className="text-xs text-muted-foreground">
+                      {field.value?.length || 0}/50 characters minimum
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
             {/* Photo Upload */}
             <div className="space-y-4">
               <div>
@@ -676,7 +761,7 @@ export function CVForm() {
                     />
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     <FormField
                       control={form.control}
                       name={`education_entries.${index}.start_date`}
@@ -754,6 +839,42 @@ export function CVForm() {
                               />
                             </PopoverContent>
                           </Popover>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.gpa`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>GPA (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., 3.8/4.0 or 8.5/10"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`education_entries.${index}.achievements`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Achievements (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Dean's List, Honors, Awards"
+                              {...field}
+                            />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -931,6 +1052,42 @@ export function CVForm() {
                       </FormItem>
                     )}
                   />
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.technologies`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Technologies Used (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., React, Node.js, Python, AWS"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    
+                    <FormField
+                      control={form.control}
+                      name={`work_experience_entries.${index}.achievements`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Key Achievements (Optional)</FormLabel>
+                          <FormControl>
+                            <Input
+                              placeholder="e.g., Increased performance by 40%"
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </Card>
               ))}
             </div>
@@ -1071,4 +1228,4 @@ export function CVForm() {
       </CardContent>
     </Card>
   );
-}
+} 

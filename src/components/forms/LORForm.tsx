@@ -33,6 +33,8 @@ export function LORForm() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [existingResponse, setExistingResponse] = useState<LORFormData | null>(null);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [submissionDate, setSubmissionDate] = useState<string | null>(null);
 
   const form = useForm<LORFormData>({
     resolver: zodResolver(lorSchema),
@@ -52,11 +54,11 @@ export function LORForm() {
 
   useEffect(() => {
     if (user) {
-      loadExistingResponse();
+      loadExistingResponse(true); // Set isSubmitted to true on initial load
     }
   }, [user]);
 
-  const loadExistingResponse = async () => {
+  const loadExistingResponse = async (setSubmittedStatus = false) => {
     try {
       const { data, error } = await supabase
         .from("lor_responses")
@@ -68,6 +70,16 @@ export function LORForm() {
 
       if (data) {
         setExistingResponse(data);
+        // Set submitted status based on parameter
+        if (setSubmittedStatus) {
+          setIsSubmitted(true);
+        }
+        
+        // Store submission date
+        if (data.created_at) {
+          setSubmissionDate(data.created_at);
+        }
+        
         form.reset({
           recommender_name: data.recommender_name || "",
           recommender_designation: data.recommender_designation || "",
@@ -117,7 +129,8 @@ export function LORForm() {
         duration: 5000,
       });
 
-      loadExistingResponse();
+      setIsSubmitted(true);
+      loadExistingResponse(false); // Don't override isSubmitted since we just set it
     } catch (error) {
       console.error("Error saving LOR:", error);
       toast({
@@ -193,8 +206,53 @@ export function LORForm() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        {isSubmitted ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-center py-8">
+              <div className="text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">LOR Form Submitted!</h3>
+                <p className="text-gray-600 mb-4">
+                  Your Letter of Recommendation information has been successfully submitted and is being processed by our team.
+                </p>
+                
+                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+                  <h4 className="font-medium text-green-800 mb-2">Form Submitted Successfully</h4>
+                  <p className="text-sm text-green-700">
+                    Thank you for submitting your LOR information. Our team will review your details and get back to you soon.
+                  </p>
+                  {submissionDate && (
+                    <p className="text-xs text-green-600 mt-2">
+                      Submitted on: {new Date(submissionDate).toLocaleDateString()}
+                    </p>
+                  )}
+                </div>
+                
+                <div className="flex justify-center gap-4 pt-4 border-t mt-6">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setIsSubmitted(false);
+                      // Reset form to allow editing while keeping existing data
+                      if (existingResponse) {
+                        loadExistingResponse(false); // Don't set isSubmitted to true
+                      }
+                    }}
+                    className="text-gray-600"
+                  >
+                    Edit Submission
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             {/* Recommender Information */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormField
@@ -416,6 +474,7 @@ export function LORForm() {
             </div>
           </form>
         </Form>
+        )}
       </CardContent>
     </Card>
   );

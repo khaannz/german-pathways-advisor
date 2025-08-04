@@ -1,5 +1,5 @@
 import Header from "@/components/Header";
-import { CVForm } from "@/components/forms/CVForm";
+import { CVFormEnhanced } from "@/components/forms/CVFormEnhanced";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
@@ -8,7 +8,7 @@ export default function CVQuestionnaire() {
     <div className="min-h-screen bg-background">
       <Header />
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="mb-6">
             <Button variant="ghost" asChild className="mb-4">
               <a href="/questionnaire" className="flex items-center gap-2">
@@ -16,14 +16,14 @@ export default function CVQuestionnaire() {
                 Back to Questionnaire
               </a>
             </Button>
-            <h1 className="text-3xl font-bold mb-2">Curriculum Vitae</h1>
+            <h1 className="text-3xl font-bold mb-2">Enhanced Curriculum Vitae</h1>
             <p className="text-muted-foreground">
-              Complete this form to share your educational background, work experience, and skills. 
-              Your progress is automatically saved.
+              Create a comprehensive CV with auto-save, progress tracking, and enhanced features. 
+              Your progress is automatically saved every 3 seconds.
             </p>
           </div>
           
-          <CVForm />
+          <CVFormEnhanced />
         </div>
       </div>
     </div>

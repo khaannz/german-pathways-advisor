@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 import { z } from 'zod';
+import { useNavigate } from 'react-router-dom';
 
 interface AuthContextType {
   user: User | null;
@@ -12,6 +13,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, role?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   const fetchUserRole = async (userId: string) => {
     const { data } = await supabase
@@ -108,7 +111,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (data.user) {
-        window.location.href = '/';
+        navigate('/dashboard');
       }
       
       return { error: null };
@@ -128,10 +131,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       });
       
       await supabase.auth.signOut({ scope: 'global' });
-      window.location.href = '/auth';
+      navigate('/auth');
     } catch (error) {
       // Force redirect even if signOut fails
-      window.location.href = '/auth';
+      navigate('/auth');
+    }
+  };
+
+  const resetPassword = async (email: string) => {
+    try {
+      // Client-side email validation
+      const emailSchema = z.string().email("Please enter a valid email address");
+      emailSchema.parse(email);
+
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      
+      return { error };
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return { error: { message: "Please enter a valid email address" } };
+      }
+      return { error };
     }
   };
 
@@ -146,7 +168,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       isEmployee, 
       signUp, 
       signIn, 
-      signOut 
+      signOut,
+      resetPassword
     }}>
       {children}
     </AuthContext.Provider>

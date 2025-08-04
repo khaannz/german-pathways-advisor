@@ -9,6 +9,8 @@ import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
+import Profile from "./pages/Profile";
+import ResetPassword from "./pages/ResetPassword";
 import Questionnaire from "./pages/Questionnaire";
 import QuestionnaireIndex from "./pages/questionnaire/Index";
 import SOPQuestionnaire from "./pages/questionnaire/SOP";
@@ -30,7 +32,9 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/employee-dashboard" element={
               <ProtectedRoute requireEmployee={true}>
                 <EmployeeDashboard />
@@ -40,6 +44,11 @@ const App = () => (
             <Route path="/questionnaire/sop" element={<SOPQuestionnaire />} />
             <Route path="/questionnaire/lor" element={<LORQuestionnaire />} />
             <Route path="/questionnaire/cv" element={<CVQuestionnaire />} />
+            <Route path="/documents" element={
+              <ProtectedRoute>
+                <Documents />
+              </ProtectedRoute>
+            } />
             <Route path="/enquiries" element={<Enquiries />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

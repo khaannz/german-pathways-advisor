@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '@/components/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -252,7 +253,7 @@ const Dashboard = () => {
                   <File className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                   <p className="text-muted-foreground mb-2">No documents uploaded yet</p>
                   <Button variant="outline" size="sm" asChild>
-                    <a href="/documents">Upload Documents</a>
+                    <Link to="/documents">Upload Documents</Link>
                   </Button>
                 </div>
               ) : (
@@ -282,7 +283,7 @@ const Dashboard = () => {
                   {documents.length >= 5 && (
                     <div className="mt-4 text-center">
                       <Button variant="outline" size="sm" asChild>
-                        <a href="/documents">View All Documents</a>
+                        <Link to="/documents">View All Documents</Link>
                       </Button>
                     </div>
                   )}
