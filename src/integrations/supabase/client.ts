@@ -2,27 +2,56 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Environment variables with fallbacks for different deployment platforms
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || 'https://scjzawibacootyibfvgp.supabase.co';
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
-// Validate environment variables
-if (!SUPABASE_URL) {
+// For Lovable: Check if we have the basic URL but missing key
+if (!SUPABASE_URL || SUPABASE_URL === 'https://your-project.supabase.co') {
+  console.error(`
+🔧 Supabase Configuration Required for Lovable:
+
+1. Go to your Lovable project settings
+2. Add these environment variables:
+   
+   VITE_SUPABASE_URL=https://scjzawibacootyibfvgp.supabase.co
+   VITE_SUPABASE_ANON_KEY=your_actual_supabase_anon_key
+
+3. Get your anon key from: https://supabase.com/dashboard/projects
+   - Select project: scjzawibacootyibfvgp
+   - Go to Settings → API
+   - Copy the "anon public" key
+
+4. Redeploy your Lovable project
+  `);
+  
   throw new Error(
     'Missing VITE_SUPABASE_URL environment variable. ' +
-    'Please create a .env file in your project root with:\n' +
-    'VITE_SUPABASE_URL=https://your-project.supabase.co\n' +
+    'Please add environment variables in your Lovable project settings:\n' +
+    'VITE_SUPABASE_URL=https://scjzawibacootyibfvgp.supabase.co\n' +
     'VITE_SUPABASE_ANON_KEY=your-anon-key'
   );
 }
 
-if (!SUPABASE_PUBLISHABLE_KEY) {
+if (!SUPABASE_PUBLISHABLE_KEY || SUPABASE_PUBLISHABLE_KEY.includes('placeholder')) {
+  console.error(`
+🔑 Supabase Anonymous Key Required:
+
+1. Go to: https://supabase.com/dashboard/projects
+2. Select your project: scjzawibacootyibfvgp  
+3. Navigate to Settings → API
+4. Copy the "anon public" key
+5. Add it to Lovable environment variables as:
+   VITE_SUPABASE_ANON_KEY=your_actual_anon_key
+  `);
+  
   throw new Error(
     'Missing VITE_SUPABASE_ANON_KEY environment variable. ' +
-    'Please create a .env file in your project root with:\n' +
-    'VITE_SUPABASE_URL=https://your-project.supabase.co\n' +
-    'VITE_SUPABASE_ANON_KEY=your-anon-key'
+    'Please add your Supabase anon key in Lovable project settings.'
   );
 }
+
+console.log('✅ Supabase client initialized with URL:', SUPABASE_URL);
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
