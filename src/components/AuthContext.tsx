@@ -26,11 +26,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   const fetchUserRole = async (userId: string) => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('role')
       .eq('user_id', userId)
       .single();
+    
+    if (error) {
+      console.error('Error fetching user role:', error);
+      setUserRole('user'); // Default to user role on error
+      return;
+    }
     
     setUserRole(data?.role || 'user');
   };
@@ -44,9 +50,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserRole(session.user.id);
-          }, 0);
+          fetchUserRole(session.user.id);
         } else {
           setUserRole(null);
         }
@@ -57,15 +61,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
       
       if (session?.user) {
         fetchUserRole(session.user.id);
+      } else {
+        setLoading(false);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Set loading to false after role is fetched
+  useEffect(() => {
+    if (userRole !== null || !user) {
+      setLoading(false);
+    }
+  }, [userRole, user]);
 
   const signUp = async (email: string, password: string, fullName: string, role: string = 'user') => {
     // Client-side email validation
@@ -75,6 +87,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       emailSchema.parse(email);
     } catch (error) {
       return { error: { message: "Please enter a valid email address" } };
+    }
+
+    // Validate role
+    if (!['user', 'employee'].includes(role)) {
+      return { error: { message: "Invalid role specified" } };
     }
 
     const redirectUrl = `${window.location.origin}/`;
@@ -116,6 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       return { error: null };
     } catch (error) {
+      console.error('Sign in error:', error);
       return { error };
     }
   };
@@ -133,6 +151,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await supabase.auth.signOut({ scope: 'global' });
       navigate('/auth');
     } catch (error) {
+      console.error('Sign out error:', error);
       // Force redirect even if signOut fails
       navigate('/auth');
     }

@@ -33,10 +33,21 @@ export default function QuestionnaireIndex() {
 
     try {
       const [sopResponse, lorResponse, cvResponse] = await Promise.all([
-        supabase.from("sop_responses").select("id").eq("user_id", user.id).single(),
-        supabase.from("lor_responses").select("id").eq("user_id", user.id).single(),
-        supabase.from("cv_responses").select("id").eq("user_id", user.id).single(),
+        supabase.from("sop_responses").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("lor_responses").select("id").eq("user_id", user.id).maybeSingle(),
+        supabase.from("cv_responses").select("id").eq("user_id", user.id).maybeSingle(),
       ]);
+
+      // Check for errors
+      if (sopResponse.error && sopResponse.error.code !== 'PGRST116') {
+        throw sopResponse.error;
+      }
+      if (lorResponse.error && lorResponse.error.code !== 'PGRST116') {
+        throw lorResponse.error;
+      }
+      if (cvResponse.error && cvResponse.error.code !== 'PGRST116') {
+        throw cvResponse.error;
+      }
 
       setFormStatus({
         sop: !!sopResponse.data,
@@ -45,6 +56,12 @@ export default function QuestionnaireIndex() {
       });
     } catch (error) {
       console.error("Error checking form status:", error);
+      // Set default status on error
+      setFormStatus({
+        sop: false,
+        lor: false,
+        cv: false,
+      });
     } finally {
       setLoading(false);
     }

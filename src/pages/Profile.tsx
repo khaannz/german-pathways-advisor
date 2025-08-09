@@ -91,8 +91,16 @@ const Profile = () => {
       newErrors.full_name = 'Full name must be at least 2 characters';
     }
 
-    if (formData.phone && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone)) {
+    if (formData.phone && formData.phone.trim() && !/^\+?[\d\s\-\(\)]+$/.test(formData.phone.trim())) {
       newErrors.phone = 'Please enter a valid phone number';
+    }
+
+    if (formData.target_program && formData.target_program.trim().length > 0 && formData.target_program.trim().length < 3) {
+      newErrors.target_program = 'Target program must be at least 3 characters';
+    }
+
+    if (formData.target_university && formData.target_university.trim().length > 0 && formData.target_university.trim().length < 3) {
+      newErrors.target_university = 'Target university must be at least 3 characters';
     }
 
     setErrors(newErrors);
@@ -128,6 +136,7 @@ const Profile = () => {
       });
 
       setEditing(false);
+      setErrors({}); // Clear any validation errors
       fetchProfile(); // Refresh the profile data
     } catch (error: any) {
       console.error('Error updating profile:', error);

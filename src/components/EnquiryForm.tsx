@@ -35,6 +35,24 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ onSuccess }) => {
       return;
     }
 
+    if (formData.subject.trim().length < 5) {
+      toast({
+        title: "Subject too short",
+        description: "Subject must be at least 5 characters long",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (formData.message.trim().length < 10) {
+      toast({
+        title: "Message too short",
+        description: "Message must be at least 10 characters long",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -43,7 +61,8 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ onSuccess }) => {
         .insert({
           user_id: user.id,
           subject: formData.subject.trim(),
-          message: formData.message.trim()
+          message: formData.message.trim(),
+          status: 'open'
         });
 
       if (error) throw error;
@@ -56,6 +75,7 @@ const EnquiryForm: React.FC<EnquiryFormProps> = ({ onSuccess }) => {
       setFormData({ subject: '', message: '' });
       if (onSuccess) onSuccess();
     } catch (error: any) {
+      console.error('Error submitting enquiry:', error);
       toast({
         title: "Submission failed",
         description: error.message || "Failed to submit enquiry",

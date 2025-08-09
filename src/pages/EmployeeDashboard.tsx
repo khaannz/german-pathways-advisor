@@ -123,65 +123,110 @@ const EmployeeDashboard = () => {
   }, [selectedUserId]);
 
   const fetchUsers = async () => {
-    const { data } = await supabase
+    try {
+      const { data, error } = await supabase
       .from('profiles')
-      .select('id, user_id, full_name')
+        .select('id, user_id, full_name, created_at')
       .eq('role', 'user');
     
-    setUsers(data || []);
+      if (error) throw error;
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load users",
+        variant: "destructive",
+      });
+    }
   };
 
   const fetchUserData = async (userId: string) => {
     setLoading(true);
     
-    const [universitiesData, sopsData, lorsData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
-      supabase.from('shortlisted_universities').select('*').eq('user_id', userId),
-      supabase.from('sops').select('*').eq('user_id', userId),
-      supabase.from('lors').select('*').eq('user_id', userId),
-      supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-      fetchQuestionnaireResponses(userId)
-    ]);
+    try {
+      const [universitiesData, sopsData, lorsData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
+        supabase.from('shortlisted_universities').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('sops').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('lors').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        fetchQuestionnaireResponses(userId)
+      ]);
 
-    setUniversities(universitiesData.data || []);
-    setSops(sopsData.data || []);
-    setLors(lorsData.data || []);
-    setDocuments((documentsData.data || []) as Document[]);
-    setEnquiries((enquiriesData.data || []) as Enquiry[]);
-    setQuestionnaireResponses(questionnaireData);
-    setLoading(false);
+      // Check for errors
+      if (universitiesData.error) throw universitiesData.error;
+      if (sopsData.error) throw sopsData.error;
+      if (lorsData.error) throw lorsData.error;
+      if (documentsData.error) throw documentsData.error;
+      if (enquiriesData.error) throw enquiriesData.error;
+
+      setUniversities(universitiesData.data || []);
+      setSops(sopsData.data || []);
+      setLors(lorsData.data || []);
+      setDocuments((documentsData.data || []) as Document[]);
+      setEnquiries((enquiriesData.data || []) as Enquiry[]);
+      setQuestionnaireResponses(questionnaireData);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load user data",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchQuestionnaireResponses = async (userId: string) => {
-    const [sopData, lorData, cvData, educationData] = await Promise.all([
-      supabase.from('sop_responses').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('lor_responses').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('cv_responses').select('*').eq('user_id', userId).maybeSingle(),
-      supabase.from('cv_education_entries').select('*').eq('user_id', userId).order('start_date', { ascending: true })
-    ]);
+    try {
+      const [sopData, lorData, cvData, educationData] = await Promise.all([
+        supabase.from('sop_responses').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('lor_responses').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('cv_responses').select('*').eq('user_id', userId).maybeSingle(),
+        supabase.from('cv_education_entries').select('*').eq('user_id', userId).order('start_date', { ascending: true })
+      ]);
 
-    return {
-      sop: sopData.data,
-      lor: lorData.data,
-      cv: cvData.data,
-      educationEntries: educationData.data || [],
-    };
+      return {
+        sop: sopData.data,
+        lor: lorData.data,
+        cv: cvData.data,
+        educationEntries: educationData.data || [],
+      };
+    } catch (error) {
+      console.error('Error fetching questionnaire responses:', error);
+      return {
+        sop: null,
+        lor: null,
+        cv: null,
+        educationEntries: [],
+      };
+    }
   };
 
   const handleAddUniversity = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId) return;
+    if (!selectedUserId || !universityForm.university_name.trim() || !universityForm.program_name.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in all required fields", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     const { error } = await supabase
       .from('shortlisted_universities')
       .insert({
         user_id: selectedUserId,
-        university_name: universityForm.university_name,
-        program_name: universityForm.program_name,
+        university_name: universityForm.university_name.trim(),
+        program_name: universityForm.program_name.trim(),
         application_status: universityForm.application_status as 'not_applied' | 'in_progress' | 'applied'
       });
 
     if (error) {
+      console.error('Error adding university:', error);
       toast({ title: "Error", description: "Failed to add university", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "University added successfully" });
@@ -192,17 +237,37 @@ const EmployeeDashboard = () => {
 
   const handleAddSOP = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId) return;
+    if (!selectedUserId || !sopForm.title.trim() || !sopForm.google_docs_link.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in all required fields", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(sopForm.google_docs_link);
+    } catch {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please enter a valid URL", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     const { error } = await supabase
       .from('sops')
       .insert({
         user_id: selectedUserId,
-        title: sopForm.title,
-        google_docs_link: sopForm.google_docs_link
+        title: sopForm.title.trim(),
+        google_docs_link: sopForm.google_docs_link.trim()
       });
 
     if (error) {
+      console.error('Error adding SOP:', error);
       toast({ title: "Error", description: "Failed to add SOP", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "SOP added successfully" });
@@ -213,17 +278,37 @@ const EmployeeDashboard = () => {
 
   const handleAddLOR = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedUserId) return;
+    if (!selectedUserId || !lorForm.title.trim() || !lorForm.google_docs_link.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in all required fields", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(lorForm.google_docs_link);
+    } catch {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please enter a valid URL", 
+        variant: "destructive" 
+      });
+      return;
+    }
 
     const { error } = await supabase
       .from('lors')
       .insert({
         user_id: selectedUserId,
-        title: lorForm.title,
-        google_docs_link: lorForm.google_docs_link
+        title: lorForm.title.trim(),
+        google_docs_link: lorForm.google_docs_link.trim()
       });
 
     if (error) {
+      console.error('Error adding LOR:', error);
       toast({ title: "Error", description: "Failed to add LOR", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "LOR added successfully" });
@@ -235,10 +320,14 @@ const EmployeeDashboard = () => {
   const handleUpdateEnquiryStatus = async (enquiryId: string, newStatus: 'open' | 'resolved') => {
     const { error } = await supabase
       .from('enquiries')
-      .update({ status: newStatus })
+      .update({ 
+        status: newStatus,
+        updated_at: new Date().toISOString()
+      })
       .eq('id', enquiryId);
 
     if (error) {
+      console.error('Error updating enquiry status:', error);
       toast({ title: "Error", description: "Failed to update enquiry status", variant: "destructive" });
     } else {
       toast({ title: "Success", description: "Enquiry status updated successfully" });

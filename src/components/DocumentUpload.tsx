@@ -95,6 +95,20 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       return;
     }
 
+    // Validate drive link if provided
+    if (formData.driveLink && formData.driveLink.trim()) {
+      try {
+        new URL(formData.driveLink.trim());
+      } catch {
+        toast({
+          title: "Invalid URL",
+          description: "Please enter a valid drive link",
+          variant: "destructive"
+        });
+        return;
+      }
+    }
+
     setLoading(true);
 
     try {
@@ -114,9 +128,9 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       console.log('Inserting document record:', {
         user_id: user.id,
         type: formData.type,
-        title: formData.title,
+        title: formData.title.trim(),
         file_path: filePath,
-        drive_link: formData.driveLink || null
+        drive_link: formData.driveLink?.trim() || null
       });
 
       const { error } = await supabase
@@ -124,10 +138,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
         .insert({
           user_id: user.id,
           type: formData.type,
-          title: formData.title,
+          title: formData.title.trim(),
           file_url: null,
           file_path: filePath,
-          drive_link: formData.driveLink || null,
+          drive_link: formData.driveLink?.trim() || null,
           file_name: fileName,
           file_size: fileSize,
           mime_type: mimeType
@@ -144,12 +158,19 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
         description: "Your document has been saved"
       });
 
+      // Reset form
       setFormData({
         type: '',
         title: '',
         driveLink: '',
         file: null
       });
+      
+      // Reset file input
+      const fileInput = document.getElementById('file') as HTMLInputElement;
+      if (fileInput) {
+        fileInput.value = '';
+      }
 
       if (onSuccess) onSuccess();
     } catch (error: any) {

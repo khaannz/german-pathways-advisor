@@ -120,7 +120,7 @@ export function SOPFormEnhanced() {
 
   // Auto-save functionality
   const autoSave = useCallback(async (data: SOPFormData) => {
-    if (!user || isAutoSaving || loading) return;
+    if (!user || isAutoSaving || loading || isSubmitted) return;
     
     setIsAutoSaving(true);
     try {
@@ -139,6 +139,7 @@ export function SOPFormEnhanced() {
       setLastSaved(new Date());
     } catch (error) {
       console.error('Auto-save failed:', error);
+      // Don't show error toast for auto-save failures to avoid spam
     } finally {
       setIsAutoSaving(false);
     }
@@ -146,6 +147,8 @@ export function SOPFormEnhanced() {
 
   // Auto-save when form values change (with debounce)
   useEffect(() => {
+    if (isSubmitted) return; // Don't auto-save if form is already submitted
+    
     const timeoutId = setTimeout(() => {
       if (form.formState.isDirty && !form.formState.isSubmitting) {
         const values = form.getValues();
@@ -154,7 +157,7 @@ export function SOPFormEnhanced() {
     }, 3000); // Auto-save after 3 seconds of inactivity
 
     return () => clearTimeout(timeoutId);
-  }, [watchedValues, form.formState.isDirty, form.formState.isSubmitting, autoSave]);
+  }, [watchedValues, form.formState.isDirty, form.formState.isSubmitting, autoSave, isSubmitted]);
 
   // Update progress when form changes
   useEffect(() => {

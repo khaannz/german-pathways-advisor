@@ -97,7 +97,7 @@ export function LORFormEnhanced() {
 
   // Auto-save functionality
   const autoSave = useCallback(async (data: LORFormData) => {
-    if (!user || isAutoSaving || loading) return;
+    if (!user || isAutoSaving || loading || isSubmitted) return;
     
     setIsAutoSaving(true);
     try {
@@ -116,6 +116,7 @@ export function LORFormEnhanced() {
       setLastSaved(new Date());
     } catch (error) {
       console.error('Auto-save failed:', error);
+      // Don't show error toast for auto-save failures to avoid spam
     } finally {
       setIsAutoSaving(false);
     }
@@ -123,6 +124,8 @@ export function LORFormEnhanced() {
 
   // Auto-save when form values change (with debounce)
   useEffect(() => {
+    if (isSubmitted) return; // Don't auto-save if form is already submitted
+    
     const timeoutId = setTimeout(() => {
       if (form.formState.isDirty && !form.formState.isSubmitting) {
         const values = form.getValues();
@@ -131,7 +134,7 @@ export function LORFormEnhanced() {
     }, 3000); // Auto-save after 3 seconds of inactivity
 
     return () => clearTimeout(timeoutId);
-  }, [form.watch(), form.formState.isDirty, form.formState.isSubmitting, autoSave]);
+  }, [form.watch(), form.formState.isDirty, form.formState.isSubmitting, autoSave, isSubmitted]);
 
   // Update progress when form changes
   useEffect(() => {

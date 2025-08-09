@@ -15,14 +15,14 @@ export function ProtectedRoute({
   requireEmployee = false, 
   redirectTo = '/auth' 
 }: ProtectedRouteProps) {
-  const { user, isEmployee, loading } = useAuth();
+  const { user, isEmployee, loading, userRole } = useAuth();
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
-    if (!loading) {
+    if (!loading && userRole !== null) {
       setChecking(false);
     }
-  }, [loading]);
+  }, [loading, userRole]);
 
   if (loading || checking) {
     return (
@@ -58,9 +58,9 @@ export function ProtectedRoute({
                 <p className="text-muted-foreground mb-4">
                   This page is only accessible to employees.
                 </p>
-                <p className="text-sm text-muted-foreground">
-                  You will be redirected to your dashboard in a moment.
-                </p>
+                <Button onClick={() => window.location.href = '/dashboard'} className="mt-4">
+                  Go to Dashboard
+                </Button>
               </div>
             </CardContent>
           </Card>
