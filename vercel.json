@@ -1,0 +1,17 @@
+{
+  "name": "german-pathways-advisor",
+  "version": 2,
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
+  "env": {
+    "VITE_SUPABASE_URL": "https://scjzawibacootyibfvgp.supabase.co",
+    "VITE_APP_NAME": "German Pathways Advisor",
+    "VITE_ENVIRONMENT": "production"
+  },
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
+}

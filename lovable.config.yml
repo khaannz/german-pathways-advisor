@@ -1,0 +1,36 @@
+# Lovable Project Configuration
+# This file tells Lovable how to build and deploy your project
+
+name: "German Pathways Advisor"
+description: "Comprehensive consultation platform for German university applications"
+
+# Build Configuration
+build:
+  command: "npm run build"
+  output: "dist"
+  node_version: "18"
+
+# Environment Variables
+environment:
+  # These will be automatically set in Lovable
+  VITE_SUPABASE_URL: "https://scjzawibacootyibfvgp.supabase.co"
+  # Note: Add your real VITE_SUPABASE_ANON_KEY in Lovable dashboard
+  VITE_APP_NAME: "German Pathways Advisor"
+  VITE_ENVIRONMENT: "production"
+
+# Dependencies
+dependencies:
+  - "@supabase/supabase-js"
+  - "react"
+  - "react-dom"
+  - "typescript"
+  - "tailwindcss"
+
+# Features
+features:
+  - "Task Management System"
+  - "Employee Dashboard"
+  - "Student Portal" 
+  - "Document Management"
+  - "Real-time Comments"
+  - "Package-based Access Control"
