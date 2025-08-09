@@ -69,12 +69,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       throw uploadError;
     }
 
-    const { data: urlData } = supabase.storage
-      .from('documents')
-      .getPublicUrl(filePath);
-
-    console.log('File uploaded successfully:', urlData.publicUrl);
-    return urlData.publicUrl;
+    console.log('File uploaded successfully to path:', filePath);
+    return filePath;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -102,14 +98,14 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
     setLoading(true);
 
     try {
-      let fileUrl = null;
-      let fileName = null;
-      let fileSize = null;
-      let mimeType = null;
+      let filePath: string | null = null;
+      let fileName: string | null = null;
+      let fileSize: number | null = null;
+      let mimeType: string | null = null;
 
       if (formData.file) {
         console.log('Starting file upload...');
-        fileUrl = await uploadFile(formData.file);
+        filePath = await uploadFile(formData.file);
         fileName = formData.file.name;
         fileSize = formData.file.size;
         mimeType = formData.file.type;
@@ -119,7 +115,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
         user_id: user.id,
         type: formData.type,
         title: formData.title,
-        file_url: fileUrl,
+        file_path: filePath,
         drive_link: formData.driveLink || null
       });
 
@@ -129,7 +125,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
           user_id: user.id,
           type: formData.type,
           title: formData.title,
-          file_url: fileUrl,
+          file_url: null,
+          file_path: filePath,
           drive_link: formData.driveLink || null,
           file_name: fileName,
           file_size: fileSize,

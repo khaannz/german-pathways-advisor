@@ -32,7 +32,7 @@ const lorSchema = z.object({
   leadership_roles: z.string().min(15, "Please provide at least 15 characters"),
   communication_skills: z.string().min(15, "Please provide at least 15 characters"),
   recommendation_strength: z.enum(["strong", "moderate", "weak"], {
-    required_error: "Please select the strength of recommendation",
+    message: "Please select the strength of recommendation",
   }),
 });
 
@@ -42,7 +42,7 @@ export function LORFormEnhanced() {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
-  const [existingResponse, setExistingResponse] = useState<LORFormData | null>(null);
+  const [existingResponse, setExistingResponse] = useState<Partial<LORFormData> | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionDate, setSubmissionDate] = useState<string | null>(null);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
@@ -155,7 +155,7 @@ export function LORFormEnhanced() {
       if (error) throw error;
 
       if (data) {
-        setExistingResponse(data);
+        setExistingResponse(data as any);
         if (setSubmittedStatus) {
           setIsSubmitted(true);
         }
@@ -179,7 +179,7 @@ export function LORFormEnhanced() {
           research_experience: data.research_experience || "",
           leadership_roles: data.leadership_roles || "",
           communication_skills: data.communication_skills || "",
-          recommendation_strength: data.recommendation_strength || "moderate",
+          recommendation_strength: ((["strong","moderate","weak"] as const).includes((data.recommendation_strength as any))) ? (data.recommendation_strength as "strong"|"moderate"|"weak") : "moderate",
         });
       }
     } catch (error) {

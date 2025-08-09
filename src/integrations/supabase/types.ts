@@ -16,9 +16,11 @@ export type Database = {
     Tables: {
       cv_education_entries: {
         Row: {
+          achievements: string | null
           created_at: string
           cv_response_id: string
           end_date: string | null
+          gpa: string | null
           id: string
           institution: string
           program: string
@@ -27,9 +29,11 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          achievements?: string | null
           created_at?: string
           cv_response_id: string
           end_date?: string | null
+          gpa?: string | null
           id?: string
           institution: string
           program: string
@@ -38,9 +42,11 @@ export type Database = {
           user_id: string
         }
         Update: {
+          achievements?: string | null
           created_at?: string
           cv_response_id?: string
           end_date?: string | null
+          gpa?: string | null
           id?: string
           institution?: string
           program?: string
@@ -68,6 +74,7 @@ export type Database = {
           languages: string | null
           photo_url: string | null
           soft_skills: string | null
+          summary: string | null
           technical_skills: string | null
           updated_at: string
           user_id: string
@@ -82,6 +89,7 @@ export type Database = {
           languages?: string | null
           photo_url?: string | null
           soft_skills?: string | null
+          summary?: string | null
           technical_skills?: string | null
           updated_at?: string
           user_id: string
@@ -96,6 +104,7 @@ export type Database = {
           languages?: string | null
           photo_url?: string | null
           soft_skills?: string | null
+          summary?: string | null
           technical_skills?: string | null
           updated_at?: string
           user_id?: string
@@ -105,6 +114,7 @@ export type Database = {
       }
       cv_work_experience_entries: {
         Row: {
+          achievements: string | null
           company: string
           created_at: string
           cv_response_id: string
@@ -113,10 +123,12 @@ export type Database = {
           id: string
           position: string
           start_date: string
+          technologies: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          achievements?: string | null
           company: string
           created_at?: string
           cv_response_id: string
@@ -125,10 +137,12 @@ export type Database = {
           id?: string
           position: string
           start_date: string
+          technologies?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          achievements?: string | null
           company?: string
           created_at?: string
           cv_response_id?: string
@@ -137,6 +151,7 @@ export type Database = {
           id?: string
           position?: string
           start_date?: string
+          technologies?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -147,6 +162,7 @@ export type Database = {
           created_at: string
           drive_link: string | null
           file_name: string | null
+          file_path: string | null
           file_size: number | null
           file_url: string | null
           id: string
@@ -160,6 +176,7 @@ export type Database = {
           created_at?: string
           drive_link?: string | null
           file_name?: string | null
+          file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
@@ -173,6 +190,7 @@ export type Database = {
           created_at?: string
           drive_link?: string | null
           file_name?: string | null
+          file_path?: string | null
           file_size?: number | null
           file_url?: string | null
           id?: string
@@ -216,49 +234,64 @@ export type Database = {
       }
       lor_responses: {
         Row: {
+          communication_skills: string | null
           courses_projects: string | null
           created_at: string
           grades_performance: string | null
           id: string
           key_strengths: string | null
+          leadership_roles: string | null
+          recommendation_strength: string | null
           recommender_designation: string | null
           recommender_email: string | null
           recommender_institution: string | null
           recommender_name: string | null
+          recommender_phone: string | null
           relationship_duration: string | null
           relationship_type: string | null
+          research_experience: string | null
           specific_examples: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          communication_skills?: string | null
           courses_projects?: string | null
           created_at?: string
           grades_performance?: string | null
           id?: string
           key_strengths?: string | null
+          leadership_roles?: string | null
+          recommendation_strength?: string | null
           recommender_designation?: string | null
           recommender_email?: string | null
           recommender_institution?: string | null
           recommender_name?: string | null
+          recommender_phone?: string | null
           relationship_duration?: string | null
           relationship_type?: string | null
+          research_experience?: string | null
           specific_examples?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          communication_skills?: string | null
           courses_projects?: string | null
           created_at?: string
           grades_performance?: string | null
           id?: string
           key_strengths?: string | null
+          leadership_roles?: string | null
+          recommendation_strength?: string | null
           recommender_designation?: string | null
           recommender_email?: string | null
           recommender_institution?: string | null
           recommender_name?: string | null
+          recommender_phone?: string | null
           relationship_duration?: string | null
           relationship_type?: string | null
+          research_experience?: string | null
           specific_examples?: string | null
           updated_at?: string
           user_id?: string
@@ -369,15 +402,18 @@ export type Database = {
           current_education_status: string | null
           date_of_birth: string | null
           email: string | null
+          financial_planning: string | null
           full_name: string | null
           has_thesis: boolean | null
           id: string
           intended_program: string | null
+          language_proficiency: string | null
           linked_in: string | null
           long_term_goals: string | null
           nationality: string | null
           personal_qualities: string | null
           phone: string | null
+          research_interests: string | null
           short_term_goals: string | null
           target_universities: string | null
           thesis_details: string | null
@@ -394,15 +430,18 @@ export type Database = {
           current_education_status?: string | null
           date_of_birth?: string | null
           email?: string | null
+          financial_planning?: string | null
           full_name?: string | null
           has_thesis?: boolean | null
           id?: string
           intended_program?: string | null
+          language_proficiency?: string | null
           linked_in?: string | null
           long_term_goals?: string | null
           nationality?: string | null
           personal_qualities?: string | null
           phone?: string | null
+          research_interests?: string | null
           short_term_goals?: string | null
           target_universities?: string | null
           thesis_details?: string | null
@@ -419,15 +458,18 @@ export type Database = {
           current_education_status?: string | null
           date_of_birth?: string | null
           email?: string | null
+          financial_planning?: string | null
           full_name?: string | null
           has_thesis?: boolean | null
           id?: string
           intended_program?: string | null
+          language_proficiency?: string | null
           linked_in?: string | null
           long_term_goals?: string | null
           nationality?: string | null
           personal_qualities?: string | null
           phone?: string | null
+          research_interests?: string | null
           short_term_goals?: string | null
           target_universities?: string | null
           thesis_details?: string | null

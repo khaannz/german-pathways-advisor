@@ -77,12 +77,12 @@ interface CVResponse {
   id?: string;
   user_id?: string;
   photo_url?: string;
-  technical_skills: string;
-  soft_skills: string;
-  languages: string;
-  certifications: string;
-  extracurriculars: string;
-  summary: string;
+  technical_skills?: string;
+  soft_skills?: string;
+  languages?: string;
+  certifications?: string;
+  extracurriculars?: string;
+  summary?: string;
   education_history?: string;
   work_experience?: string;
   created_at?: string;
@@ -266,7 +266,7 @@ export function CVFormEnhanced() {
 
         if (workExperienceError) throw workExperienceError;
 
-        const educationEntries = educationData?.map(entry => ({
+        const educationEntries = (educationData as any[])?.map((entry: any) => ({
           id: entry.id,
           institution: entry.institution,
           program: entry.program,
@@ -276,7 +276,7 @@ export function CVFormEnhanced() {
           achievements: entry.achievements || "",
         })) || [];
 
-        const workExperienceEntries = workExperienceData?.map(entry => ({
+        const workExperienceEntries = (workExperienceData as any[])?.map((entry: any) => ({
           id: entry.id,
           company: entry.company,
           position: entry.position,

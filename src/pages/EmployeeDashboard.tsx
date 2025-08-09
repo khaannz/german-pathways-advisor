@@ -51,6 +51,7 @@ interface Document {
   type: string;
   title: string;
   file_url: string | null;
+  file_path: string | null;
   drive_link: string | null;
   file_name: string | null;
   file_size: number | null;
@@ -272,6 +273,42 @@ const EmployeeDashboard = () => {
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const handleDocumentDownload = async (doc: Document) => {
+    const path = doc.file_path
+      ? doc.file_path
+      : (doc.file_url ? (() => {
+          try {
+            const u = new URL(doc.file_url!);
+            const parts = u.pathname.split('/');
+            const idx = parts.findIndex((p) => p === 'documents');
+            return idx !== -1 ? parts.slice(idx + 1).join('/') : parts.slice(-2).join('/');
+          } catch {
+            return null;
+          }
+        })() : null);
+
+    if (!path) {
+      toast({ title: 'Download failed', description: 'No file path available', variant: 'destructive' });
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase.storage.from('documents').download(path);
+      if (error) throw error;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name || doc.title;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error: any) {
+      toast({ title: 'Download failed', description: error.message, variant: 'destructive' });
+    }
   };
 
   const getDocumentTypeColor = (type: string) => {
@@ -666,7 +703,7 @@ const EmployeeDashboard = () => {
                                   <TableCell>{format(new Date(doc.created_at), 'MMM dd, yyyy')}</TableCell>
                                   <TableCell>
                                     {doc.file_url && (
-                                      <Button variant="outline" size="sm" className="mr-2">
+                                      <Button variant="outline" size="sm" className="mr-2" onClick={() => handleDocumentDownload(doc)}>
                                         <Download className="h-4 w-4" />
                                       </Button>
                                     )}
