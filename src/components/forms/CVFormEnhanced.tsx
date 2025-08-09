@@ -11,12 +11,11 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
-import { CalendarIcon, Plus, X, RotateCcw, Trash2, Save, Clock, CheckCircle, Upload, Eye, Download } from "lucide-react";
+import { CalendarIcon, Plus, X, RotateCcw, Save, Clock, CheckCircle, Upload, Eye, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Enhanced validation schemas
@@ -501,49 +500,6 @@ export function CVFormEnhanced() {
       description: "All form fields have been reset to default values.",
       duration: 3000,
     });
-  };
-
-  const handleDeleteForm = async () => {
-    if (!user || !existingResponse) return;
-
-    setLoading(true);
-    try {
-      await supabase
-        .from("cv_education_entries")
-        .delete()
-        .eq("user_id", user.id);
-
-      await supabase
-        .from("cv_work_experience_entries")
-        .delete()
-        .eq("user_id", user.id);
-
-      const { error } = await supabase
-        .from("cv_responses")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "CV form deleted successfully!",
-        duration: 5000,
-      });
-
-      setExistingResponse(null);
-      handleClearForm();
-    } catch (error) {
-      console.error("Error deleting CV:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete CV form. Please try again.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setLoading(false);
-    }
   };
 
   // Show submitted status if form is already submitted
@@ -1203,31 +1159,6 @@ export function CVFormEnhanced() {
                 <RotateCcw className="h-4 w-4 mr-2" />
                 Clear Form
               </Button>
-              
-              {existingResponse && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button type="button" variant="destructive">
-                      <Trash2 className="h-4 w-4 mr-2" />
-                      Delete Form
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete your CV form data and all education entries.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDeleteForm} disabled={loading}>
-                        {loading ? "Deleting..." : "Delete"}
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
             </div>
           </form>
         </Form>

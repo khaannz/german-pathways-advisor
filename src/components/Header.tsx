@@ -26,9 +26,9 @@ const Header = () => {
           </div>
           
           <nav className="hidden md:flex items-center gap-6">
-            <a href="#services" className="text-foreground hover:text-primary transition-colors">Services</a>
-            <a href="#about" className="text-foreground hover:text-primary transition-colors">About</a>
-            <a href="#testimonials" className="text-foreground hover:text-primary transition-colors">Success Stories</a>
+            <Link to="/services" className="text-foreground hover:text-primary transition-colors">Services</Link>
+            <Link to="/about" className="text-foreground hover:text-primary transition-colors">About</Link>
+            <Link to="/success-stories" className="text-foreground hover:text-primary transition-colors">Success Stories</Link>
             <a href="#contact" className="text-foreground hover:text-primary transition-colors">Contact</a>
           </nav>
           
@@ -52,12 +52,14 @@ const Header = () => {
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <Link to="/dashboard" className="flex items-center">
-                      <User className="h-4 w-4 mr-2" />
-                      Dashboard
-                    </Link>
-                  </DropdownMenuItem>
+                  {!isEmployee && (
+                    <DropdownMenuItem asChild>
+                      <Link to="/dashboard" className="flex items-center">
+                        <User className="h-4 w-4 mr-2" />
+                        Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   {!isEmployee && (
                     <DropdownMenuItem asChild>
                       <Link to="/questionnaire" className="flex items-center">

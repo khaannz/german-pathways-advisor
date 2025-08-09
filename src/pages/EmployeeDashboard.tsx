@@ -11,8 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Users, FileText, UserCheck, Search, Upload, MessageSquare, Calendar, CheckCircle, Clock, ExternalLink, Download } from 'lucide-react';
+import { Plus, Users, FileText, UserCheck, Search, Upload, MessageSquare, Calendar, CheckCircle, Clock, ExternalLink, Download, User } from 'lucide-react';
 import { format } from 'date-fns';
+import DocumentDownloadManager from '@/components/DocumentDownloadManager';
+import { TaskList } from '@/components/TaskList';
+import { CreateTaskModal } from '@/components/CreateTaskModal';
 
 interface User {
   id: string;
@@ -46,6 +49,14 @@ interface LOR {
   created_at: string;
 }
 
+interface CVResponse {
+  id: string;
+  user_id: string;
+  title: string;
+  google_docs_link: string;
+  created_at: string;
+}
+
 interface Document {
   id: string;
   type: string;
@@ -64,6 +75,19 @@ interface Enquiry {
   message: string;
   status: 'open' | 'resolved';
   created_at: string;
+}
+
+interface Task {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high';
+  due_date?: string;
+  assigned_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 const EmployeeDashboard = () => {
@@ -91,11 +115,26 @@ const EmployeeDashboard = () => {
     google_docs_link: ''
   });
 
+  const [cvForm, setCvForm] = useState({
+    title: '',
+    google_docs_link: ''
+  });
+
   const [universities, setUniversities] = useState<ShortlistedUniversity[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
   const [lors, setLors] = useState<LOR[]>([]);
+  const [cvResponses, setCvResponses] = useState<CVResponse[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskForm, setTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'medium',
+    due_date: ''
+  });
+  const [showCreateTaskModal, setShowCreateTaskModal] = useState(false);
+  const [taskListKey, setTaskListKey] = useState(0);
   const [questionnaireResponses, setQuestionnaireResponses] = useState<{
     sop: any;
     lor: any;
@@ -167,6 +206,16 @@ const EmployeeDashboard = () => {
       setDocuments((documentsData.data || []) as Document[]);
       setEnquiries((enquiriesData.data || []) as Enquiry[]);
       setQuestionnaireResponses(questionnaireData);
+      
+      // Load CVs from localStorage (since no cv table exists yet)
+      const existingCVs = JSON.parse(localStorage.getItem('employeeCVs') || '[]');
+      const userCVs = existingCVs.filter((cv: CVResponse) => cv.user_id === userId);
+      setCvResponses(userCVs);
+      
+      // Load tasks from localStorage
+      const existingTasks = JSON.parse(localStorage.getItem('employeeTasks') || '[]');
+      const userTasks = existingTasks.filter((task: Task) => task.user_id === userId);
+      setTasks(userTasks);
     } catch (error) {
       console.error('Error fetching user data:', error);
       toast({
@@ -317,6 +366,58 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleAddCV = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId || !cvForm.title.trim() || !cvForm.google_docs_link.trim()) {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please fill in all required fields", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    // Validate URL format
+    try {
+      new URL(cvForm.google_docs_link);
+    } catch {
+      toast({ 
+        title: "Validation Error", 
+        description: "Please enter a valid URL", 
+        variant: "destructive" 
+      });
+      return;
+    }
+
+    try {
+      // For now, we'll store CVs in localStorage since the table structure needs to match SOP/LOR
+      // In a real implementation, this would be saved to a cv table in the database
+      const newCV: CVResponse = {
+        id: Date.now().toString(),
+        user_id: selectedUserId,
+        title: cvForm.title.trim(),
+        google_docs_link: cvForm.google_docs_link.trim(),
+        created_at: new Date().toISOString(),
+      };
+
+      // Add to state
+      setCvResponses(prev => [newCV, ...prev]);
+
+      // Save to localStorage
+      const existingCVs = JSON.parse(localStorage.getItem('employeeCVs') || '[]');
+      existingCVs.push(newCV);
+      localStorage.setItem('employeeCVs', JSON.stringify(existingCVs));
+
+      // Reset form
+      setCvForm({ title: '', google_docs_link: '' });
+
+      toast({ title: "Success", description: "CV added successfully" });
+    } catch (error) {
+      console.error('Error adding CV:', error);
+      toast({ title: "Error", description: "Failed to add CV", variant: "destructive" });
+    }
+  };
+
   const handleUpdateEnquiryStatus = async (enquiryId: string, newStatus: 'open' | 'resolved') => {
     const { error } = await supabase
       .from('enquiries')
@@ -365,6 +466,9 @@ const EmployeeDashboard = () => {
   };
 
   const handleDocumentDownload = async (doc: Document) => {
+    // Debug log to see what data we have
+    console.log('Attempting to download document:', doc);
+    
     const path = doc.file_path
       ? doc.file_path
       : (doc.file_url ? (() => {
@@ -378,25 +482,66 @@ const EmployeeDashboard = () => {
           }
         })() : null);
 
+    console.log('Extracted path:', path);
+
     if (!path) {
-      toast({ title: 'Download failed', description: 'No file path available', variant: 'destructive' });
+      toast({ 
+        title: 'Download failed', 
+        description: `No file path available. File URL: ${doc.file_url || 'none'}, File Path: ${doc.file_path || 'none'}`, 
+        variant: 'destructive' 
+      });
       return;
     }
 
     try {
-      const { data, error } = await supabase.storage.from('documents').download(path);
-      if (error) throw error;
+      // First try to create a signed URL for secure access
+      const { data: signedUrlData, error: urlError } = await supabase.storage
+        .from('documents')
+        .createSignedUrl(path, 3600); // 1 hour expiry
 
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name || doc.title;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (urlError) {
+        console.error('Signed URL error:', urlError);
+      }
+
+      if (urlError || !signedUrlData?.signedUrl) {
+        console.log('Falling back to direct download');
+        // Fallback to direct download if signed URL fails
+        const { data, error } = await supabase.storage.from('documents').download(path);
+        if (error) {
+          console.error('Direct download error:', error);
+          throw error;
+        }
+
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = doc.file_name || doc.title || 'document';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
+        toast({ title: 'Success', description: 'Document downloaded successfully' });
+      } else {
+        console.log('Using signed URL for download');
+        // Use signed URL for secure download
+        const a = document.createElement('a');
+        a.href = signedUrlData.signedUrl;
+        a.download = doc.file_name || doc.title || 'document';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        toast({ title: 'Success', description: 'Document download initiated' });
+      }
     } catch (error: any) {
-      toast({ title: 'Download failed', description: error.message, variant: 'destructive' });
+      console.error('Download error:', error);
+      toast({ 
+        title: 'Download failed', 
+        description: `Error: ${error.message || 'Unknown error occurred'}. Path: ${path}`, 
+        variant: 'destructive' 
+      });
     }
   };
 
@@ -410,13 +555,129 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleAddTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedUserId || !taskForm.title.trim() || !taskForm.description.trim()) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      // For now, we'll store tasks in localStorage since the table doesn't exist
+      // In a real implementation, this would be saved to the database
+      const newTask: Task = {
+        id: Date.now().toString(),
+        user_id: selectedUserId,
+        title: taskForm.title,
+        description: taskForm.description,
+        status: 'pending',
+        priority: taskForm.priority as 'low' | 'medium' | 'high',
+        due_date: taskForm.due_date || undefined,
+        assigned_by: user?.id || '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      };
+
+      // Add to state
+      setTasks(prev => [newTask, ...prev]);
+
+      // Save to localStorage
+      const existingTasks = JSON.parse(localStorage.getItem('employeeTasks') || '[]');
+      existingTasks.push(newTask);
+      localStorage.setItem('employeeTasks', JSON.stringify(existingTasks));
+
+      // Reset form
+      setTaskForm({
+        title: '',
+        description: '',
+        priority: 'medium',
+        due_date: ''
+      });
+
+      toast({
+        title: "Success",
+        description: "Task assigned successfully",
+      });
+    } catch (error) {
+      console.error('Error adding task:', error);
+      toast({
+        title: "Error",
+        description: "Failed to assign task",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateTaskStatus = async (taskId: string, newStatus: 'pending' | 'in_progress' | 'completed') => {
+    try {
+      // Update in state
+      setTasks(prev => prev.map(task => 
+        task.id === taskId 
+          ? { ...task, status: newStatus, updated_at: new Date().toISOString() }
+          : task
+      ));
+
+      // Update localStorage
+      const existingTasks = JSON.parse(localStorage.getItem('employeeTasks') || '[]');
+      const updatedTasks = existingTasks.map((task: Task) => 
+        task.id === taskId 
+          ? { ...task, status: newStatus, updated_at: new Date().toISOString() }
+          : task
+      );
+      localStorage.setItem('employeeTasks', JSON.stringify(updatedTasks));
+
+      toast({
+        title: "Success",
+        description: "Task status updated",
+      });
+    } catch (error) {
+      console.error('Error updating task status:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update task status",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getTaskStatusColor = (status: string) => {
+    switch (status) {
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'in_progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'low': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
+      case 'high': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200';
+    }
+  };
+
+  const handleTaskCreated = () => {
+    // Refresh the task list by updating the key
+    setTaskListKey(prev => prev + 1);
+    toast({
+      title: "Task Created",
+      description: "Task has been successfully assigned to the student.",
+    });
+  };
+
   const filteredUsers = users.filter(user => 
     user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   if (!user || !isEmployee) {
     return (
-      <>
+      <React.Fragment>
         <Header />
         <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center">
           <Card className="w-full max-w-md">
@@ -428,12 +689,12 @@ const EmployeeDashboard = () => {
             </CardContent>
           </Card>
         </div>
-      </>
+      </React.Fragment>
     );
   }
 
   return (
-    <>
+    <React.Fragment>
       <Header />
       <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
         <div className="container mx-auto px-4 py-8">
@@ -526,13 +787,15 @@ const EmployeeDashboard = () => {
             <div className="lg:col-span-3">
               {selectedUserId ? (
                 <Tabs defaultValue="universities" className="w-full">
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="universities">Universities</TabsTrigger>
               <TabsTrigger value="sops">SOPs</TabsTrigger>
               <TabsTrigger value="lors">LORs</TabsTrigger>
+              <TabsTrigger value="cvs">CVs</TabsTrigger>
               <TabsTrigger value="documents">Documents</TabsTrigger>
               <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
               <TabsTrigger value="questionnaire">Responses</TabsTrigger>
+              <TabsTrigger value="tasks">Tasks</TabsTrigger>
             </TabsList>
                   
                   <TabsContent value="universities" className="space-y-4">
@@ -752,6 +1015,85 @@ const EmployeeDashboard = () => {
                     </Card>
                   </TabsContent>
 
+                  <TabsContent value="cvs" className="space-y-4">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Plus className="h-4 w-4" />
+                          Add CV
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <form onSubmit={handleAddCV} className="space-y-4">
+                          <div>
+                            <Label htmlFor="cv-title">CV Title</Label>
+                            <Input
+                              id="cv-title"
+                              value={cvForm.title}
+                              onChange={(e) => setCvForm({...cvForm, title: e.target.value})}
+                              placeholder="Enter CV title"
+                              required
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="cv-link">Google Docs Link</Label>
+                            <Input
+                              id="cv-link"
+                              type="url"
+                              value={cvForm.google_docs_link}
+                              onChange={(e) => setCvForm({...cvForm, google_docs_link: e.target.value})}
+                              placeholder="Enter Google Docs link"
+                              required
+                            />
+                          </div>
+                          <Button type="submit">Add CV</Button>
+                        </form>
+                      </CardContent>
+                    </Card>
+
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>CVs</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        {cvResponses.length === 0 ? (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No CVs found</p>
+                          </div>
+                        ) : (
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Title</TableHead>
+                                <TableHead>Link</TableHead>
+                                <TableHead>Date Added</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {cvResponses.map((cv) => (
+                                <TableRow key={cv.id}>
+                                  <TableCell>{cv.title}</TableCell>
+                                  <TableCell>
+                                    <a
+                                      href={cv.google_docs_link}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-primary hover:underline"
+                                    >
+                                      View Document
+                                    </a>
+                                  </TableCell>
+                                  <TableCell>{new Date(cv.created_at).toLocaleDateString()}</TableCell>
+                                </TableRow>
+                              ))}
+                            </TableBody>
+                          </Table>
+                        )}
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
                   <TabsContent value="documents" className="space-y-4">
                     <Card>
                       <CardHeader>
@@ -774,7 +1116,7 @@ const EmployeeDashboard = () => {
                                 <TableHead>Type</TableHead>
                                 <TableHead>Size</TableHead>
                                 <TableHead>Date Added</TableHead>
-                                <TableHead>Action</TableHead>
+                                <TableHead>Actions</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -791,18 +1133,30 @@ const EmployeeDashboard = () => {
                                   </TableCell>
                                   <TableCell>{format(new Date(doc.created_at), 'MMM dd, yyyy')}</TableCell>
                                   <TableCell>
-                                    {doc.file_url && (
-                                      <Button variant="outline" size="sm" className="mr-2" onClick={() => handleDocumentDownload(doc)}>
-                                        <Download className="h-4 w-4" />
-                                      </Button>
-                                    )}
-                                    {doc.drive_link && (
-                                      <Button variant="outline" size="sm" asChild>
-                                        <a href={doc.drive_link} target="_blank" rel="noopener noreferrer">
-                                          <ExternalLink className="h-4 w-4" />
-                                        </a>
-                                      </Button>
-                                    )}
+                                    <div className="flex gap-2">
+                                      {(doc.file_url || doc.file_path) && (
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => handleDocumentDownload(doc)}
+                                          title="Download document"
+                                        >
+                                          <Download className="h-4 w-4 mr-1" />
+                                          Download
+                                        </Button>
+                                      )}
+                                      {doc.drive_link && (
+                                        <Button variant="outline" size="sm" asChild title="Open in Google Drive">
+                                          <a href={doc.drive_link} target="_blank" rel="noopener noreferrer">
+                                            <ExternalLink className="h-4 w-4 mr-1" />
+                                            View
+                                          </a>
+                                        </Button>
+                                      )}
+                                      {!doc.file_url && !doc.file_path && !doc.drive_link && (
+                                        <span className="text-muted-foreground text-sm">No download available</span>
+                                      )}
+                                    </div>
                                   </TableCell>
                                 </TableRow>
                               ))}
@@ -872,9 +1226,12 @@ const EmployeeDashboard = () => {
                     <Card>
                       <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Questionnaire Responses
+                          <Download className="h-4 w-4" />
+                          Download User Responses
                         </CardTitle>
+                        <p className="text-sm text-muted-foreground">
+                          Export user questionnaire responses as professional documents
+                        </p>
                       </CardHeader>
                       <CardContent>
                         {!questionnaireResponses.sop && !questionnaireResponses.lor && !questionnaireResponses.cv ? (
@@ -883,219 +1240,41 @@ const EmployeeDashboard = () => {
                             <p>No questionnaire responses submitted by this student</p>
                           </div>
                         ) : (
-                          <div className="space-y-6">
-                            {/* SOP Response */}
-                            {questionnaireResponses.sop && (
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Statement of Purpose (SOP)</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Personal Information</h4>
-                                      <div className="mt-2 space-y-2 text-sm">
-                                        <p><strong>Name:</strong> {questionnaireResponses.sop.full_name}</p>
-                                        <p><strong>Email:</strong> {questionnaireResponses.sop.email}</p>
-                                        <p><strong>Phone:</strong> {questionnaireResponses.sop.phone}</p>
-                                        <p><strong>Nationality:</strong> {questionnaireResponses.sop.nationality}</p>
-                                        {questionnaireResponses.sop.date_of_birth && (
-                                          <p><strong>Date of Birth:</strong> {format(new Date(questionnaireResponses.sop.date_of_birth), 'MMM dd, yyyy')}</p>
-                                        )}
-                                        {questionnaireResponses.sop.linked_in && (
-                                          <p><strong>LinkedIn:</strong> <a href={questionnaireResponses.sop.linked_in} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">View Profile</a></p>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Academic & Program Details</h4>
-                                      <div className="mt-2 space-y-2 text-sm">
-                                        <p><strong>Current Education Status:</strong> {questionnaireResponses.sop.current_education_status}</p>
-                                        <p><strong>Intended Program:</strong> {questionnaireResponses.sop.intended_program}</p>
-                                        <p><strong>Target Universities:</strong> {questionnaireResponses.sop.target_universities}</p>
-                                        <p><strong>Has Thesis:</strong> {questionnaireResponses.sop.has_thesis ? 'Yes' : 'No'}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Why This Program</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.why_this_program}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Why Germany</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.why_germany}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Short-term Goals</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.short_term_goals}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Long-term Goals</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.long_term_goals}</p>
-                                    </div>
-                                    {questionnaireResponses.sop.thesis_details && (
-                                      <div>
-                                        <h4 className="font-medium text-sm text-muted-foreground">Thesis Details</h4>
-                                        <p className="mt-1 text-sm">{questionnaireResponses.sop.thesis_details}</p>
-                                      </div>
-                                    )}
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Academic Projects</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.academic_projects}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Work Experience</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.work_experience}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Personal Qualities</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.personal_qualities}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Challenges & Accomplishments</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.sop.challenges_accomplishments}</p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-
-                            {/* LOR Response */}
-                            {questionnaireResponses.lor && (
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Letter of Recommendation (LOR)</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Recommender Information</h4>
-                                      <div className="mt-2 space-y-2 text-sm">
-                                        <p><strong>Name:</strong> {questionnaireResponses.lor.recommender_name}</p>
-                                        <p><strong>Designation:</strong> {questionnaireResponses.lor.recommender_designation}</p>
-                                        <p><strong>Institution:</strong> {questionnaireResponses.lor.recommender_institution}</p>
-                                        <p><strong>Email:</strong> {questionnaireResponses.lor.recommender_email}</p>
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Relationship Details</h4>
-                                      <div className="mt-2 space-y-2 text-sm">
-                                        <p><strong>Relationship Type:</strong> {questionnaireResponses.lor.relationship_type}</p>
-                                        <p><strong>Duration:</strong> {questionnaireResponses.lor.relationship_duration}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                  
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Courses/Projects</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.courses_projects}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Key Strengths</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.key_strengths}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Specific Examples</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.specific_examples}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Grades & Performance</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.lor.grades_performance}</p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-
-                            {/* CV Response */}
-                            {questionnaireResponses.cv && (
-                              <Card>
-                                <CardHeader>
-                                  <CardTitle className="text-lg">Curriculum Vitae (CV)</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                  {questionnaireResponses.cv.photo_url && (
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Professional Photo</h4>
-                                      <div className="flex items-center gap-4">
-                                        <img
-                                          src={questionnaireResponses.cv.photo_url}
-                                          alt="Student's professional photo"
-                                          className="w-24 h-24 object-cover rounded-md"
-                                        />
-                                        <Button variant="outline" size="sm" asChild>
-                                          <a href={questionnaireResponses.cv.photo_url} target="_blank" rel="noopener noreferrer">
-                                            <Download className="h-4 w-4 mr-2" />
-                                            Download Photo
-                                          </a>
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Education History */}
-                                  {questionnaireResponses.educationEntries.length > 0 && (
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Education History</h4>
-                                      <div className="mt-2 space-y-3">
-                                        {questionnaireResponses.educationEntries.map((entry: any, index: number) => (
-                                          <div key={entry.id || index} className="border rounded-lg p-3">
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                                              <div>
-                                                <p className="font-medium">{entry.institution}</p>
-                                                <p className="text-sm text-muted-foreground">{entry.program}</p>
-                                              </div>
-                                              <div className="text-sm">
-                                                <p><strong>Start:</strong> {format(new Date(entry.start_date), 'MMM yyyy')}</p>
-                                                {entry.end_date && (
-                                                  <p><strong>End:</strong> {format(new Date(entry.end_date), 'MMM yyyy')}</p>
-                                                )}
-                                                {!entry.end_date && <p className="text-muted-foreground">Ongoing</p>}
-                                              </div>
-                                            </div>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  <div className="space-y-4">
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Work Experience</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.work_experience}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Technical Skills</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.technical_skills}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Soft Skills</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.soft_skills}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Languages</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.languages}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Certifications</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.certifications}</p>
-                                    </div>
-                                    <div>
-                                      <h4 className="font-medium text-sm text-muted-foreground">Extracurricular Activities</h4>
-                                      <p className="mt-1 text-sm">{questionnaireResponses.cv.extracurriculars}</p>
-                                    </div>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            )}
-                          </div>
+                          <DocumentDownloadManager 
+                            selectedUserId={selectedUserId}
+                            userName={users.find(u => u.user_id === selectedUserId)?.full_name || 'Unknown User'}
+                          />
                         )}
                       </CardContent>
                     </Card>
                   </TabsContent>
+
+                  {/* Tasks Tab */}
+                  <TabsContent value="tasks" className="space-y-4">
+                    <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                        <CardTitle className="flex items-center gap-2">
+                          <CheckCircle className="h-4 w-4" />
+                          Task Management
+                        </CardTitle>
+                        <Button 
+                          onClick={() => setShowCreateTaskModal(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="h-4 w-4" />
+                          Create Task
+                        </Button>
+                      </CardHeader>
+                      <CardContent>
+                        <TaskList 
+                          key={taskListKey}
+                          userId={selectedUserId || ''}
+                          isEmployee={true}
+                        />
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
                 </Tabs>
               ) : (
                 <Card>
@@ -1111,7 +1290,17 @@ const EmployeeDashboard = () => {
           </div>
         </div>
       </div>
-    </>
+
+      {/* Create Task Modal */}
+      <CreateTaskModal
+        isOpen={showCreateTaskModal}
+        onClose={() => setShowCreateTaskModal(false)}
+        onTaskCreated={handleTaskCreated}
+        currentUserId={user.id}
+        preselectedUserId={selectedUserId}
+        preselectedUserName={users.find(u => u.user_id === selectedUserId)?.full_name || ''}
+      />
+    </React.Fragment>
   );
 };
 

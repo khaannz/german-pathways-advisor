@@ -10,10 +10,13 @@ interface AuthContextType {
   loading: boolean;
   userRole: string | null;
   isEmployee: boolean;
+  isAdmin: boolean;
+  userProfile: any;
   signUp: (email: string, password: string, fullName: string, role?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  refreshUserProfile: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,22 +26,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<any>(null);
   const navigate = useNavigate();
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserProfile = async (userId: string) => {
     const { data, error } = await supabase
       .from('profiles')
-      .select('role')
+      .select('*')
       .eq('user_id', userId)
       .single();
     
     if (error) {
-      console.error('Error fetching user role:', error);
+      console.error('Error fetching user profile:', error);
       setUserRole('user'); // Default to user role on error
+      setUserProfile(null);
       return;
     }
     
     setUserRole(data?.role || 'user');
+    setUserProfile(data);
+  };
+
+  const refreshUserProfile = async () => {
+    if (user) {
+      await fetchUserProfile(user.id);
+    }
   };
 
   useEffect(() => {
@@ -50,9 +62,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setLoading(false);
         
         if (session?.user) {
-          fetchUserRole(session.user.id);
+          fetchUserProfile(session.user.id);
         } else {
           setUserRole(null);
+          setUserProfile(null);
         }
       }
     );
@@ -63,7 +76,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(session?.user ?? null);
       
       if (session?.user) {
-        fetchUserRole(session.user.id);
+        fetchUserProfile(session.user.id);
       } else {
         setLoading(false);
       }
@@ -128,7 +141,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (data.user) {
-        navigate('/dashboard');
+        // Fetch user profile to determine role for redirect
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('role')
+          .eq('user_id', data.user.id)
+          .single();
+        
+        const userRole = profileData?.role || 'user';
+        
+        // Redirect based on role
+        if (userRole === 'employee') {
+          navigate('/employee-dashboard');
+        } else {
+          navigate('/dashboard');
+        }
       }
       
       return { error: null };
@@ -176,7 +203,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const isEmployee = userRole === 'employee';
+  const isEmployee = userRole === 'employee' || userRole === 'admin';
+  const isAdmin = userRole === 'admin';
 
   return (
     <AuthContext.Provider value={{ 
@@ -184,11 +212,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       session, 
       loading, 
       userRole, 
-      isEmployee, 
+      isEmployee,
+      isAdmin,
+      userProfile,
       signUp, 
       signIn, 
       signOut,
-      resetPassword
+      resetPassword,
+      refreshUserProfile
     }}>
       {children}
     </AuthContext.Provider>

@@ -18,6 +18,9 @@ import LORQuestionnaire from "./pages/questionnaire/LOR";
 import CVQuestionnaire from "./pages/questionnaire/CV";
 import Documents from "./pages/Documents";
 import Enquiries from "./pages/Enquiries";
+import Services from "./pages/Services";
+import About from "./pages/About";
+import SuccessStories from "./pages/SuccessStories";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -31,9 +34,16 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/about" element={<About />} />
+            <Route path="/success-stories" element={<SuccessStories />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard" element={
+              <ProtectedRoute requireStudent={true}>
+                <Dashboard />
+              </ProtectedRoute>
+            } />
             <Route path="/profile" element={<Profile />} />
             <Route path="/employee-dashboard" element={
               <ProtectedRoute requireEmployee={true}>

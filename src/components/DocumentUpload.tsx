@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/components/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Link, Loader2 } from 'lucide-react';
+import { Upload, Link, Loader2, FileText, X } from 'lucide-react';
 
 interface DocumentUploadProps {
   onSuccess?: () => void;
@@ -18,6 +18,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [dragActive, setDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     type: '',
     title: '',
@@ -28,28 +30,63 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
-      const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
-      if (!allowedTypes.includes(file.type)) {
-        toast({
-          title: "Invalid file type",
-          description: "Please upload a PDF or Word document",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      // Validate file size (10MB limit)
-      if (file.size > 10 * 1024 * 1024) {
-        toast({
-          title: "File too large",
-          description: "Please upload a file smaller than 10MB",
-          variant: "destructive"
-        });
-        return;
-      }
-      
-      setFormData(prev => ({ ...prev, file }));
+      validateAndSetFile(file);
+    }
+  };
+
+  const validateAndSetFile = (file: File) => {
+    // Validate file type
+    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload a PDF or Word document",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Validate file size (10MB limit)
+    if (file.size > 10 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Please upload a file smaller than 10MB",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setFormData(prev => ({ ...prev, file }));
+  };
+
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === "dragenter" || e.type === "dragover") {
+      setDragActive(true);
+    } else if (e.type === "dragleave") {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      validateAndSetFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const openFileSelector = () => {
+    fileInputRef.current?.click();
+  };
+
+  const removeFile = () => {
+    setFormData(prev => ({ ...prev, file: null }));
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
     }
   };
 
@@ -86,10 +123,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       return;
     }
 
-    if (!formData.file && !formData.driveLink) {
+    if (!formData.file) {
       toast({
-        title: "No document provided",
-        description: "Please either upload a file or provide a drive link",
+        title: "No file uploaded",
+        description: "Please upload a document file",
         variant: "destructive"
       });
       return;
@@ -113,6 +150,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
 
     try {
       let filePath: string | null = null;
+      let fileUrl: string | null = null;
       let fileName: string | null = null;
       let fileSize: number | null = null;
       let mimeType: string | null = null;
@@ -123,6 +161,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
         fileName = formData.file.name;
         fileSize = formData.file.size;
         mimeType = formData.file.type;
+        
+        // For security, we'll store the path and generate signed URLs when needed
+        // instead of storing a permanent public URL
+        fileUrl = null; // Will be generated dynamically when accessing
       }
 
       console.log('Inserting document record:', {
@@ -130,6 +172,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
         type: formData.type,
         title: formData.title.trim(),
         file_path: filePath,
+        file_url: fileUrl,
         drive_link: formData.driveLink?.trim() || null
       });
 
@@ -139,7 +182,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
           user_id: user.id,
           type: formData.type,
           title: formData.title.trim(),
-          file_url: null,
+          file_url: fileUrl,
           file_path: filePath,
           drive_link: formData.driveLink?.trim() || null,
           file_name: fileName,
@@ -167,9 +210,8 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
       });
       
       // Reset file input
-      const fileInput = document.getElementById('file') as HTMLInputElement;
-      if (fileInput) {
-        fileInput.value = '';
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
       }
 
       if (onSuccess) onSuccess();
@@ -225,30 +267,96 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
           </div>
 
           <div>
-            <Label htmlFor="file">Upload File (PDF/DOC)</Label>
-            <Input
-              id="file"
-              type="file"
-              accept=".pdf,.doc,.docx"
-              onChange={handleFileChange}
-              className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-primary-foreground hover:file:bg-primary/90"
-            />
+            <Label className="text-base font-medium">Upload File (PDF/DOC) *</Label>
+            <div
+              className={`relative mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
+                dragActive
+                  ? 'border-primary bg-primary/5 scale-[1.02]'
+                  : 'border-slate-300 hover:border-slate-400 dark:border-slate-600 dark:hover:border-slate-500'
+              } ${formData.file ? 'bg-green-50 border-green-300 dark:bg-green-900/20 dark:border-green-700' : ''}`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={handleFileChange}
+                className="hidden"
+              />
+              
+              {!formData.file ? (
+                <div className="space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center">
+                    <Upload className="h-8 w-8 text-slate-500" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-medium text-slate-700 dark:text-slate-300 mb-2">
+                      Drop your file here, or{' '}
+                      <button
+                        type="button"
+                        onClick={openFileSelector}
+                        className="text-primary hover:text-primary/80 underline font-medium"
+                      >
+                        browse
+                      </button>
+                    </p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                      Supports PDF, DOC, DOCX up to 10MB
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <div className="mx-auto w-16 h-16 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+                    <FileText className="h-8 w-8 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div>
+                    <p className="text-lg font-medium text-green-700 dark:text-green-300 mb-1">
+                      {formData.file.name}
+                    </p>
+                    <p className="text-sm text-green-600 dark:text-green-400 mb-3">
+                      {(formData.file.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                    <div className="flex items-center justify-center gap-3">
+                      <button
+                        type="button"
+                        onClick={openFileSelector}
+                        className="text-sm text-slate-600 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200 underline"
+                      >
+                        Change file
+                      </button>
+                      <button
+                        type="button"
+                        onClick={removeFile}
+                        className="inline-flex items-center gap-1 text-sm text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-200"
+                      >
+                        <X className="h-3 w-3" />
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="text-center text-muted-foreground">
-            OR
+            OR (Optional)
           </div>
 
           <div>
             <Label htmlFor="driveLink" className="flex items-center gap-2">
               <Link className="h-4 w-4" />
-              Google Drive / OneDrive Link
+              Google Drive / OneDrive Link (Optional)
             </Label>
             <Textarea
               id="driveLink"
               value={formData.driveLink}
               onChange={(e) => setFormData(prev => ({ ...prev, driveLink: e.target.value }))}
-              placeholder="Paste your Google Drive or OneDrive sharing link here"
+              placeholder="Optionally, paste your Google Drive or OneDrive sharing link here"
               rows={3}
             />
           </div>
