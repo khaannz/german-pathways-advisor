@@ -35,6 +35,13 @@ interface SOP {
   created_at: string;
 }
 
+interface CV {
+  id: string;
+  title: string;
+  google_docs_link: string;
+  created_at: string;
+}
+
 interface LOR {
   id: string;
   title: string;
@@ -74,6 +81,7 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [universities, setUniversities] = useState<ShortlistedUniversity[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
+  const [cvs, setCvs] = useState<CV[]>([]);
   const [lors, setLors] = useState<LOR[]>([]);
   const [cvResponses, setCvResponses] = useState<CVResponse[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -98,9 +106,10 @@ const Dashboard = () => {
       setDataLoading(true);
       
       // Fetch all data in parallel
-      const [universitiesData, sopsData, lorsData, cvResponsesData, documentsData, enquiriesData] = await Promise.all([
+      const [universitiesData, sopsData, cvsData, lorsData, cvResponsesData, documentsData, enquiriesData] = await Promise.all([
         supabase.from('shortlisted_universities').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('sops').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
+        supabase.from('cvs').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('lors').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('cv_responses').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('documents').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
@@ -110,6 +119,7 @@ const Dashboard = () => {
       // Check for errors
       if (universitiesData.error) throw universitiesData.error;
       if (sopsData.error) throw sopsData.error;
+      if (cvsData.error) throw cvsData.error;
       if (lorsData.error) throw lorsData.error;
       if (cvResponsesData.error) throw cvResponsesData.error;
       if (documentsData.error) throw documentsData.error;
@@ -118,6 +128,7 @@ const Dashboard = () => {
       // Set state
       setUniversities(universitiesData.data || []);
       setSops(sopsData.data || []);
+      setCvs(cvsData.data || []);
       setLors(lorsData.data || []);
       setCvResponses(cvResponsesData.data || []);
       setDocuments(documentsData.data || []);
@@ -127,6 +138,7 @@ const Dashboard = () => {
       calculateStats(
         universitiesData.data || [],
         sopsData.data || [],
+        cvsData.data || [],
         lorsData.data || [],
         documentsData.data || [],
         enquiriesData.data || []
@@ -142,7 +154,7 @@ const Dashboard = () => {
     }
   };
 
-  const calculateStats = (universities: any[], sops: any[], lors: any[], documents: any[], enquiries: any[]) => {
+  const calculateStats = (universities: any[], sops: any[], cvs: any[], lors: any[], documents: any[], enquiries: any[]) => {
     const totalApplications = universities.length;
     const documentsUploaded = documents.length;
     const enquiriesOpen = enquiries.filter(e => e.status === 'open').length;
@@ -153,10 +165,10 @@ const Dashboard = () => {
     
     if (universities.length > 0) completed++;
     if (sops.length > 0) completed++;
+    if (cvs.length > 0) completed++;
     if (lors.length > 0) completed++;
     if (documents.length > 0) completed++;
     if (universities.some(u => u.application_status === 'applied')) completed++;
-    if (enquiries.length > 0) completed++;
     
     const completionPercentage = Math.round((completed / milestones) * 100);
     
@@ -164,8 +176,8 @@ const Dashboard = () => {
     let pendingTasks = 0;
     if (universities.length === 0) pendingTasks++;
     if (sops.length === 0) pendingTasks++;
+    if (cvs.length === 0) pendingTasks++;
     if (lors.length === 0) pendingTasks++;
-    if (documents.filter(d => d.type === 'CV').length === 0) pendingTasks++;
     if (universities.some(u => u.application_status === 'not_applied')) pendingTasks++;
     
     setStats({
@@ -459,44 +471,31 @@ const Dashboard = () => {
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <User className="h-5 w-5" />
-                    CVs ({cvResponses.length})
+                    CVs ({cvs.length})
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {cvResponses.length === 0 ? (
+                  {cvs.length === 0 ? (
                     <div className="text-center py-8">
                       <User className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
                       <p className="text-sm text-muted-foreground">No CVs created</p>
-                      <Button size="sm" className="mt-2" asChild>
-                        <Link to="/cv-form">Create CV</Link>
-                      </Button>
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {cvResponses.slice(0, 3).map((cv) => (
+                      {cvs.slice(0, 3).map((cv) => (
                         <div key={cv.id} className="p-3 border rounded-lg">
-                          <h4 className="font-medium text-sm">CV Response</h4>
+                          <h4 className="font-medium text-sm">{cv.title}</h4>
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(cv.created_at), 'MMM dd')}
                           </p>
-                          {cv.summary && (
-                            <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                              {cv.summary}
-                            </p>
-                          )}
                           <Button variant="outline" size="sm" className="mt-2 w-full" asChild>
-                            <Link to={`/cv-form?id=${cv.id}`}>
-                              <Eye className="h-3 w-3 mr-1" />
+                            <a href={cv.google_docs_link} target="_blank" rel="noopener noreferrer">
+                              <ExternalLink className="h-3 w-3 mr-1" />
                               View
-                            </Link>
+                            </a>
                           </Button>
                         </div>
                       ))}
-                      {cvResponses.length > 3 && (
-                        <Button variant="ghost" size="sm" className="w-full" asChild>
-                          <Link to="/cv-form">View All CVs</Link>
-                        </Button>
-                      )}
                     </div>
                   )}
                 </CardContent>
@@ -567,47 +566,6 @@ const Dashboard = () => {
                           </Button>
                         </div>
                       ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Other Documents */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Upload className="h-5 w-5" />
-                    Files ({documents.length})
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {documents.length === 0 ? (
-                    <div className="text-center py-8">
-                      <Upload className="h-12 w-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-                      <p className="text-sm text-muted-foreground">No documents uploaded</p>
-                      <Button size="sm" className="mt-2" asChild>
-                        <Link to="/documents">Upload</Link>
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {documents.slice(0, 3).map((doc) => (
-                        <div key={doc.id} className="p-3 border rounded-lg">
-                          <h4 className="font-medium text-sm">{doc.title}</h4>
-                          <p className="text-xs text-muted-foreground">{doc.type}</p>
-                          <Button variant="outline" size="sm" className="mt-2 w-full" asChild>
-                            <a href={doc.drive_link || doc.file_url!} target="_blank" rel="noopener noreferrer">
-                              <Download className="h-3 w-3 mr-1" />
-                              View
-                            </a>
-                          </Button>
-                        </div>
-                      ))}
-                      {documents.length > 3 && (
-                        <Button variant="ghost" size="sm" className="w-full" asChild>
-                          <Link to="/documents">View All Documents</Link>
-                        </Button>
-                      )}
                     </div>
                   )}
                 </CardContent>
@@ -722,7 +680,7 @@ const Dashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-6">
-                  {[...universities, ...sops, ...lors, ...documents, ...cvResponses]
+                  {[...universities, ...sops, ...cvs, ...lors, ...documents, ...cvResponses]
                     .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
                     .map((item, index) => (
                       <div key={index} className="flex items-start gap-4">
@@ -747,7 +705,7 @@ const Dashboard = () => {
                       </div>
                     ))}
                   
-                  {universities.length === 0 && sops.length === 0 && lors.length === 0 && documents.length === 0 && cvResponses.length === 0 && (
+                  {universities.length === 0 && sops.length === 0 && cvs.length === 0 && lors.length === 0 && documents.length === 0 && cvResponses.length === 0 && (
                     <div className="text-center py-12">
                       <Calendar className="h-16 w-16 text-muted-foreground mx-auto mb-4 opacity-50" />
                       <h3 className="text-lg font-semibold mb-2">No Activity Yet</h3>

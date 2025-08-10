@@ -5,8 +5,15 @@ import Header from '@/components/Header';
 import DocumentUpload from '@/components/DocumentUpload';
 import DocumentList from '@/components/DocumentList';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Card, CardContent } from '@/components/ui/card';
-import { FileText, Upload, FolderOpen, Shield, Sparkles, Lock } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { 
+  FileText, 
+  Upload, 
+  Shield, 
+  Sparkles, 
+  Lock,
+  TrendingUp
+} from 'lucide-react';
 
 interface DocumentStats {
   totalDocuments: number;
@@ -24,15 +31,11 @@ const Documents = () => {
     storageUsed: 0,
     documentsByType: {}
   });
-  const [statsLoading, setStatsLoading] = useState(true);
 
   const fetchDocumentStats = async () => {
     if (!user) return;
 
     try {
-      setStatsLoading(true);
-      
-      // Fetch all documents for the user
       const { data: documents, error } = await supabase
         .from('documents')
         .select('file_size, created_at, type')
@@ -68,8 +71,6 @@ const Documents = () => {
       });
     } catch (error) {
       console.error('Error fetching document stats:', error);
-    } finally {
-      setStatsLoading(false);
     }
   };
 
@@ -85,14 +86,18 @@ const Documents = () => {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
+  const handleUploadSuccess = () => {
+    setRefreshKey(prev => prev + 1);
+  };
+
   if (loading) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Header />
         <div className="container mx-auto px-4 py-8 flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-            <p className="mt-2 text-muted-foreground">Loading...</p>
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="mt-2 text-gray-600">Loading...</p>
           </div>
         </div>
       </div>
@@ -101,178 +106,104 @@ const Documents = () => {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
         <Header />
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-md mx-auto text-center">
-            <h1 className="text-2xl font-bold text-foreground mb-4">Access Denied</h1>
-            <p className="text-muted-foreground">Please sign in to access document management.</p>
+            <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+            <p className="text-gray-600">Please sign in to access document management.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  const handleUploadSuccess = () => {
-    setRefreshKey(prev => prev + 1);
-    // Optionally show a success message
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-purple-50/30 to-orange-50/30 dark:from-slate-900 dark:via-purple-900/20 dark:to-orange-900/20">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100">
       <Header />
+      
+      {/* Hero Section */}
+      <div className="bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-700 text-white">
+        <div className="container mx-auto px-4 py-12">
+          <div className="max-w-4xl mx-auto text-center">
+            <div className="flex items-center justify-center mb-6">
+              <div className="p-4 bg-white/20 rounded-full mr-4">
+                <Shield className="h-12 w-12" />
+              </div>
+              <h1 className="text-4xl md:text-5xl font-bold">Document Center</h1>
+            </div>
+            <p className="text-xl text-blue-100 mb-8 max-w-2xl mx-auto">
+              Securely manage your immigration documents with our advanced platform. 
+              Enterprise-grade security meets intuitive design.
+            </p>
+            
+            {/* Quick Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-3xl mx-auto">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/15 transition-all">
+                <div className="text-3xl font-bold mb-2">{stats.totalDocuments}</div>
+                <div className="text-sm text-blue-100">Total Documents</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/15 transition-all">
+                <div className="text-3xl font-bold mb-2">{stats.recentUploads}</div>
+                <div className="text-sm text-blue-100">Recent Uploads</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/15 transition-all">
+                <div className="text-3xl font-bold mb-2">{formatFileSize(stats.storageUsed)}</div>
+                <div className="text-sm text-blue-100">Storage Used</div>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl p-4 hover:bg-white/15 transition-all">
+                <div className="text-3xl font-bold mb-2">High</div>
+                <div className="text-sm text-blue-100">Security Level</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div className="container mx-auto px-4 py-8">
         <div className="max-w-7xl mx-auto">
-          {/* Enhanced Header Section */}
-          <div className="mb-12 text-center relative">
-            {/* Enhanced background decoration */}
-            <div className="absolute inset-0 flex items-center justify-center opacity-10">
-              <div className="w-96 h-96 bg-gradient-to-r from-primary via-purple-400 to-accent rounded-full blur-3xl animate-pulse"></div>
-            </div>
-            <div className="absolute top-20 left-1/4 w-32 h-32 bg-gradient-to-r from-accent/20 to-primary/20 rounded-full blur-2xl"></div>
-            <div className="absolute bottom-20 right-1/4 w-24 h-24 bg-gradient-to-r from-primary/20 to-purple-400/20 rounded-full blur-xl"></div>
-            
-            <div className="relative z-10">
-              <div className="flex items-center justify-center gap-4 mb-8">
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-r from-primary via-purple-500 to-accent rounded-full blur-xl opacity-40 group-hover:opacity-60 transition-opacity duration-300"></div>
-                  <div className="relative p-5 bg-gradient-to-r from-primary via-purple-500 to-accent rounded-full shadow-2xl">
-                    <FolderOpen className="h-12 w-12 text-white" />
-                  </div>
-                </div>
-                <Sparkles className="h-8 w-8 text-primary animate-pulse" />
-              </div>
-              
-              <h1 className="text-6xl font-bold bg-gradient-to-r from-primary via-purple-600 to-accent bg-clip-text text-transparent mb-6 tracking-tight">
-                Document Management
-              </h1>
-              
-              <p className="text-xl text-muted-foreground max-w-4xl mx-auto leading-relaxed mb-8 font-medium">
-                Experience next-generation document management with enterprise-grade security. 
-                Your academic journey deserves the best tools - organize, secure, and access your documents with elegance.
-              </p>
-              
-              <div className="flex items-center justify-center gap-4 text-sm font-medium">
-                <div className="flex items-center gap-3 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <Lock className="h-5 w-5 text-emerald-600" />
-                  <span className="text-slate-700 dark:text-slate-300">256-bit encryption</span>
-                </div>
-                <div className="flex items-center gap-3 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <Shield className="h-5 w-5 text-blue-600" />
-                  <span className="text-slate-700 dark:text-slate-300">GDPR compliant</span>
-                </div>
-                <div className="flex items-center gap-3 bg-white/70 dark:bg-slate-800/70 backdrop-blur-md rounded-2xl px-6 py-4 border border-white/30 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <FileText className="h-5 w-5 text-purple-600" />
-                  <span className="text-slate-700 dark:text-slate-300">Auto-organized</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Enhanced Stats Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-16">
-            <Card className="group hover:scale-105 transition-all duration-500 bg-gradient-to-br from-primary via-purple-500 to-purple-600 text-white border-0 shadow-2xl hover:shadow-3xl rounded-3xl overflow-hidden">
-              <CardContent className="p-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-4 bg-white/20 rounded-2xl group-hover:bg-white/30 transition-all duration-300 group-hover:scale-110">
-                    <FileText className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-90 font-semibold tracking-wide uppercase">Total Documents</p>
-                    <p className="text-4xl font-bold tracking-tight mt-2">
-                      {statsLoading ? (
-                        <span className="animate-pulse">...</span>
-                      ) : (
-                        <span className="tabular-nums">{stats.totalDocuments}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="group hover:scale-105 transition-all duration-500 bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600 text-white border-0 shadow-2xl hover:shadow-3xl rounded-3xl overflow-hidden">
-              <CardContent className="p-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-4 bg-white/20 rounded-2xl group-hover:bg-white/30 transition-all duration-300 group-hover:scale-110">
-                    <Upload className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-90 font-semibold tracking-wide uppercase">Recent Uploads</p>
-                    <p className="text-4xl font-bold tracking-tight mt-2">
-                      {statsLoading ? (
-                        <span className="animate-pulse">...</span>
-                      ) : (
-                        <span className="tabular-nums">{stats.recentUploads}</span>
-                      )}
-                    </p>
-                    <p className="text-xs opacity-80 mt-1 font-medium">Last 7 days</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="group hover:scale-105 transition-all duration-500 bg-gradient-to-br from-accent via-orange-500 to-red-500 text-white border-0 shadow-2xl hover:shadow-3xl rounded-3xl overflow-hidden">
-              <CardContent className="p-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-4 bg-white/20 rounded-2xl group-hover:bg-white/30 transition-all duration-300 group-hover:scale-110">
-                    <FolderOpen className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-90 font-semibold tracking-wide uppercase">Storage Used</p>
-                    <p className="text-4xl font-bold tracking-tight mt-2">
-                      {statsLoading ? (
-                        <span className="animate-pulse">...</span>
-                      ) : (
-                        <span className="tabular-nums">{formatFileSize(stats.storageUsed)}</span>
-                      )}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-            
-            <Card className="group hover:scale-105 transition-all duration-500 bg-gradient-to-br from-slate-600 via-slate-700 to-slate-800 text-white border-0 shadow-2xl hover:shadow-3xl rounded-3xl overflow-hidden">
-              <CardContent className="p-8 relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <div className="relative z-10 flex items-center gap-5">
-                  <div className="p-4 bg-white/20 rounded-2xl group-hover:bg-white/30 transition-all duration-300 group-hover:scale-110">
-                    <Shield className="h-10 w-10" />
-                  </div>
-                  <div>
-                    <p className="text-sm opacity-90 font-semibold tracking-wide uppercase">Security Level</p>
-                    <p className="text-4xl font-bold tracking-tight mt-2">High</p>
-                    <p className="text-xs opacity-80 mt-1 font-medium">Enterprise grade</p>
-                  </div>
+          {/* Document Type Overview */}
+          <div className="mb-8">
+            <Card className="shadow-lg border-0 bg-gradient-to-r from-white to-purple-50">
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <TrendingUp className="h-5 w-5 mr-2 text-purple-600" />
+                  Document Overview
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {Object.entries(stats.documentsByType).map(([type, count]) => (
+                    <div key={type} className="text-center p-4 bg-white rounded-lg shadow-sm">
+                      <div className="text-2xl font-bold text-purple-600 mb-1">{count}</div>
+                      <div className="text-sm text-gray-600 uppercase tracking-wide">{type}</div>
+                    </div>
+                  ))}
+                  {Object.keys(stats.documentsByType).length === 0 && (
+                    <div className="col-span-full text-center text-gray-500 py-8">
+                      No documents uploaded yet. Start by uploading your first document!
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Premium Main Content */}
-          <div className="bg-white/90 dark:bg-slate-800/90 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl p-10 relative overflow-hidden">
-            {/* Subtle background pattern */}
-            <div className="absolute inset-0 opacity-5">
-              <div className="absolute top-10 left-10 w-20 h-20 bg-gradient-to-r from-primary to-purple-500 rounded-full blur-xl"></div>
-              <div className="absolute bottom-10 right-10 w-16 h-16 bg-gradient-to-r from-accent to-orange-500 rounded-full blur-lg"></div>
-            </div>
-            
-            <Tabs defaultValue="upload" className="space-y-10 relative z-10">
-              <div className="flex justify-center">
-                <TabsList className="grid w-full max-w-2xl grid-cols-2 h-16 bg-slate-100/90 dark:bg-slate-700/90 backdrop-blur-sm border border-white/30 shadow-xl rounded-3xl p-2">
+          {/* Main Content */}
+          <div className="bg-white/90 backdrop-blur-xl rounded-3xl border border-white/30 shadow-2xl overflow-hidden">
+            <Tabs defaultValue="upload" className="space-y-8">
+              <div className="flex justify-center pt-8">
+                <TabsList className="grid w-full max-w-2xl grid-cols-2 h-16 bg-slate-100/90 backdrop-blur-sm border border-white/30 shadow-xl rounded-3xl p-2">
                   <TabsTrigger 
                     value="upload" 
-                    className="flex items-center gap-4 text-lg font-semibold h-full rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-primary transition-all duration-300 hover:scale-105"
+                    className="flex items-center gap-4 text-lg font-semibold h-full rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-primary transition-all duration-300"
                   >
                     <Upload className="h-6 w-6" />
                     Upload Documents
                   </TabsTrigger>
                   <TabsTrigger 
                     value="manage" 
-                    className="flex items-center gap-4 text-lg font-semibold h-full rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-primary transition-all duration-300 hover:scale-105"
+                    className="flex items-center gap-4 text-lg font-semibold h-full rounded-2xl data-[state=active]:bg-white data-[state=active]:shadow-xl data-[state=active]:text-primary transition-all duration-300"
                   >
                     <FileText className="h-6 w-6" />
                     My Documents
@@ -280,21 +211,30 @@ const Documents = () => {
                 </TabsList>
               </div>
 
-              <TabsContent value="upload" className="mt-12">
+              <TabsContent value="upload" className="px-8 pb-8">
                 <div className="max-w-5xl mx-auto">
                   <div className="mb-10 text-center">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">Upload Your Documents</h2>
-                    <p className="text-lg text-muted-foreground font-medium">Experience seamless file uploading with our advanced drag-and-drop interface. We support PDF, DOC, and DOCX formats up to 10MB.</p>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                      Upload Your Documents
+                    </h2>
+                    <p className="text-lg text-gray-600 font-medium max-w-2xl mx-auto">
+                      Experience seamless file uploading with our advanced interface. 
+                      We support PDF, DOC, and DOCX formats up to 10MB.
+                    </p>
                   </div>
                   <DocumentUpload onSuccess={handleUploadSuccess} />
                 </div>
               </TabsContent>
 
-              <TabsContent value="manage" className="mt-12">
+              <TabsContent value="manage" className="px-8 pb-8">
                 <div className="max-w-7xl mx-auto">
                   <div className="mb-10 text-center">
-                    <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent mb-4">Your Document Library</h2>
-                    <p className="text-lg text-muted-foreground font-medium">Access, download, and manage all your uploaded documents in one secure, organized location.</p>
+                    <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-4">
+                      Your Document Library
+                    </h2>
+                    <p className="text-lg text-gray-600 font-medium max-w-2xl mx-auto">
+                      Access, download, and manage all your uploaded documents in one secure, organized location.
+                    </p>
                   </div>
                   <DocumentList refresh={refreshKey} />
                 </div>
@@ -302,16 +242,26 @@ const Documents = () => {
             </Tabs>
           </div>
 
-          {/* Enhanced Footer */}
-          <footer className="mt-20 text-center">
-            <div className="bg-white/70 dark:bg-slate-800/70 backdrop-blur-lg rounded-3xl border border-white/30 shadow-xl p-8 mx-auto max-w-2xl">
+          {/* Security Footer */}
+          <footer className="mt-12 text-center">
+            <div className="bg-white/70 backdrop-blur-lg rounded-3xl border border-white/30 shadow-xl p-8 mx-auto max-w-2xl">
               <div className="flex items-center justify-center gap-3 mb-4">
-                <Shield className="h-6 w-6 text-primary" />
-                <span className="text-lg font-semibold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+                <Shield className="h-6 w-6 text-blue-600" />
+                <span className="text-lg font-semibold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Enterprise-Grade Security
                 </span>
               </div>
-              <p className="text-muted-foreground font-medium leading-relaxed">
+              <div className="flex items-center justify-center gap-6 mb-4">
+                <div className="flex items-center gap-2">
+                  <Lock className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-gray-600">256-bit encryption</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-purple-600" />
+                  <span className="text-sm text-gray-600">GDPR compliant</span>
+                </div>
+              </div>
+              <p className="text-gray-600 leading-relaxed">
                 Your documents are protected with bank-level encryption and stored securely. 
                 We maintain strict privacy standards and never share your personal information.
               </p>
