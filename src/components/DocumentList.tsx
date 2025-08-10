@@ -14,6 +14,43 @@ import {
   File,
   Loader2
 } from 'lucide-react';
+
+// Helper function for reliable file downloads
+const downloadBlobFile = (blob: Blob, filename: string) => {
+  try {
+    // Primary method - create download link
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    // Add to DOM, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up after a delay
+    setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 100);
+    
+    return true;
+  } catch (error) {
+    console.error('Primary download method failed:', error);
+    
+    // Fallback method - open in new window
+    try {
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      return true;
+    } catch (fallbackError) {
+      console.error('Fallback download method failed:', fallbackError);
+      return false;
+    }
+  }
+};
 import { format } from 'date-fns';
 
 interface Document {
@@ -85,25 +122,75 @@ const DocumentList: React.FC<DocumentListProps> = ({ refresh }) => {
     };
 
     const path = derivePath();
+    console.log('Download attempt for document:', doc);
+    console.log('Derived path:', path);
+    
     if (!path) {
       toast({ title: 'Download failed', description: 'No file path available', variant: 'destructive' });
       return;
     }
 
     try {
+      console.log('Attempting to download from storage path:', path);
+      
+      // First, check if the file exists
+      const { data: listData, error: listError } = await supabase.storage
+        .from('documents')
+        .list(path.split('/')[0], { limit: 100 });
+        
+      if (listError) {
+        console.error('Storage list error:', listError);
+      } else {
+        console.log('Files in directory:', listData);
+      }
+      
       const { data, error } = await supabase.storage.from('documents').download(path);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Supabase storage download error:', error);
+        
+        // Try alternative download method using public URL
+        const { data: publicUrlData } = supabase.storage
+          .from('documents')
+          .getPublicUrl(path);
+          
+        if (publicUrlData?.publicUrl) {
+          console.log('Trying public URL download:', publicUrlData.publicUrl);
+          window.open(publicUrlData.publicUrl, '_blank');
+          toast({ 
+            title: 'Download started', 
+            description: `Opening ${doc.file_name || doc.title} in new tab` 
+          });
+          return;
+        }
+        
+        throw error;
+      }
 
-      const url = URL.createObjectURL(data);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = doc.file_name || doc.title;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      if (!data) {
+        throw new Error('No data received from storage');
+      }
+
+      console.log('Download successful, creating blob URL');
+      const filename = doc.file_name || doc.title || 'download';
+      const downloadSuccess = downloadBlobFile(data, filename);
+      
+      if (downloadSuccess) {
+        toast({ 
+          title: 'Download started', 
+          description: `Downloading ${filename}` 
+        });
+      } else {
+        throw new Error('All download methods failed');
+      }
+      
     } catch (error: any) {
-      toast({ title: 'Download failed', description: error.message, variant: 'destructive' });
+      console.error('Download error:', error);
+      toast({ 
+        title: 'Download failed', 
+        description: error.message || 'Unknown error occurred', 
+        variant: 'destructive' 
+      });
     }
   };
 

@@ -650,7 +650,7 @@ const EmployeeDashboard = () => {
 
   if (!user || !isEmployee) {
     return (
-      <React.Fragment>
+      <div>
         <Header />
         <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20 flex items-center justify-center">
           <Card className="w-full max-w-md">
@@ -662,12 +662,12 @@ const EmployeeDashboard = () => {
             </CardContent>
           </Card>
         </div>
-      </React.Fragment>
+      </div>
     );
   }
 
   return (
-    <React.Fragment>
+    <div>
       <Header />
       <div className="min-h-screen bg-gradient-to-br from-background to-secondary/20">
         <div className="container mx-auto px-4 py-8">
@@ -1273,7 +1273,7 @@ const EmployeeDashboard = () => {
         preselectedUserId={selectedUserId}
         preselectedUserName={users.find(u => u.user_id === selectedUserId)?.full_name || ''}
       />
-    </React.Fragment>
+    </div>
   );
 };
 

@@ -4,12 +4,9 @@ import { supabase } from '@/integrations/supabase/client';
 import Header from '@/components/Header';
 import DocumentUpload from '@/components/DocumentUpload';
 import DocumentList from '@/components/DocumentList';
-import DownloadPermissions from '@/components/DownloadPermissions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import DownloadManager from '@/utils/downloadManager';
-import { FileText, Upload, FolderOpen, Shield, Sparkles, Lock, Download } from 'lucide-react';
+import { FileText, Upload, FolderOpen, Shield, Sparkles, Lock } from 'lucide-react';
 
 interface DocumentStats {
   totalDocuments: number;
@@ -19,7 +16,7 @@ interface DocumentStats {
 }
 
 const Documents = () => {
-  const { user, loading, userRole } = useAuth();
+  const { user, loading } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [stats, setStats] = useState<DocumentStats>({
     totalDocuments: 0,
@@ -28,13 +25,6 @@ const Documents = () => {
     documentsByType: {}
   });
   const [statsLoading, setStatsLoading] = useState(true);
-  const [downloadManager, setDownloadManager] = useState<DownloadManager | null>(null);
-
-  useEffect(() => {
-    if (userRole) {
-      setDownloadManager(new DownloadManager(userRole));
-    }
-  }, [userRole]);
 
   const fetchDocumentStats = async () => {
     if (!user) return;

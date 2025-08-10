@@ -1,6 +1,36 @@
 import { Document, Packer, Paragraph, TextRun, HeadingLevel, AlignmentType, Table, TableRow, TableCell, WidthType } from 'docx';
 import jsPDF from 'jspdf';
-import { saveAs } from 'file-saver';
+
+// Universal download helper function
+const downloadBlob = (blob: Blob, filename: string): void => {
+  try {
+    // Method 1: Create URL and download link
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    link.style.display = 'none';
+    
+    // Append to body, click, and remove
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    // Clean up the URL object
+    setTimeout(() => window.URL.revokeObjectURL(url), 100);
+  } catch (error) {
+    console.error('Download failed:', error);
+    // Fallback: Open in new tab
+    try {
+      const url = window.URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => window.URL.revokeObjectURL(url), 100);
+    } catch (fallbackError) {
+      console.error('Fallback download also failed:', fallbackError);
+      throw new Error('Download failed. Please try again or check your browser settings.');
+    }
+  }
+};
 
 // Type definitions based on exact database schema
 export interface CVResponse {
@@ -477,7 +507,8 @@ export const generateCVWordDocument = async (data: CompleteCVData, userName: str
 
   try {
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `CV_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`);
+    const filename = `CV_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
+    downloadBlob(blob, filename);
     return { success: true };
   } catch (error) {
     console.error('Error generating Word document:', error);
@@ -942,7 +973,8 @@ export const generateSOPWordDocument = async (data: CompleteSOPData, userName: s
 
   try {
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `SOP_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`);
+    const filename = `SOP_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
+    downloadBlob(blob, filename);
     return { success: true };
   } catch (error) {
     console.error('Error generating Word document:', error);
@@ -1317,7 +1349,8 @@ export const generateLORWordDocument = async (data: CompleteLORData, userName: s
 
   try {
     const blob = await Packer.toBlob(doc);
-    saveAs(blob, `LOR_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`);
+    const filename = `LOR_${userName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.docx`;
+    downloadBlob(blob, filename);
     return { success: true };
   } catch (error) {
     console.error('Error generating Word document:', error);
