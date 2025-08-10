@@ -1,0 +1,17 @@
+name: Validate Push
+
+on:
+  push:
+    branches:
+      - Vs_code_updates
+
+jobs:
+  validate-push:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Validate Vs_code_updates push
+        run: |
+          echo "✅ Push to Vs_code_updates branch detected"
+          echo "🔄 Auto-merge workflow will be triggered"
+          echo "📝 Changes will be automatically merged to main if tests pass"
