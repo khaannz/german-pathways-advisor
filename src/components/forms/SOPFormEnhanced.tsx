@@ -338,7 +338,7 @@ export function SOPFormEnhanced() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Enhanced Statement of Purpose</CardTitle>
+            <CardTitle>Statement of Purpose</CardTitle>
             <CardDescription>
               Create a comprehensive SOP with auto-save and progress tracking
             </CardDescription>

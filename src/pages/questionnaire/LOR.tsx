@@ -16,7 +16,7 @@ export default function LORQuestionnaire() {
                 Back to Questionnaire
               </a>
             </Button>
-            <h1 className="text-3xl font-bold mb-2">Enhanced Letter of Recommendation</h1>
+            <h1 className="text-3xl font-bold mb-2">Letter of Recommendation</h1>
             <p className="text-muted-foreground">
               Provide comprehensive information about your recommender and relationship with enhanced features. 
               Your progress is automatically saved every 3 seconds.

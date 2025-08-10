@@ -35,12 +35,26 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
   };
 
   const validateAndSetFile = (file: File) => {
+    // Define allowed types based on document type
+    const documentAllowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const imageAllowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    
+    let allowedTypes: string[];
+    let fileTypeDescription: string;
+    
+    if (formData.type === 'photo') {
+      allowedTypes = [...documentAllowedTypes, ...imageAllowedTypes];
+      fileTypeDescription = "PDF, Word document, or image (JPEG, PNG, WebP)";
+    } else {
+      allowedTypes = documentAllowedTypes;
+      fileTypeDescription = "PDF or Word document";
+    }
+    
     // Validate file type
-    const allowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (!allowedTypes.includes(file.type)) {
       toast({
         title: "Invalid file type",
-        description: "Please upload a PDF or Word document",
+        description: `Please upload a ${fileTypeDescription}`,
         variant: "destructive"
       });
       return;
@@ -245,10 +259,12 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
                   <SelectValue placeholder="Select document type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SOP">Statement of Purpose</SelectItem>
                   <SelectItem value="LOR">Letter of Recommendation</SelectItem>
                   <SelectItem value="CV">CV/Resume</SelectItem>
                   <SelectItem value="transcript">Transcript</SelectItem>
+                  <SelectItem value="photo">Photo</SelectItem>
+                  <SelectItem value="PASSPORT">Passport</SelectItem>
+                  <SelectItem value="IELTS">IELTS Certificate</SelectItem>
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
@@ -282,7 +298,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
               <input
                 ref={fileInputRef}
                 type="file"
-                accept=".pdf,.doc,.docx"
+                accept={formData.type === 'photo' ? ".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp" : ".pdf,.doc,.docx"}
                 onChange={handleFileChange}
                 className="hidden"
               />
@@ -304,7 +320,7 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
                       </button>
                     </p>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Supports PDF, DOC, DOCX up to 10MB
+                      Supports {formData.type === 'photo' ? 'PDF, DOC, DOCX, JPG, PNG, WebP' : 'PDF, DOC, DOCX'} up to 10MB
                     </p>
                   </div>
                 </div>

@@ -560,7 +560,7 @@ export function CVFormEnhanced() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Enhanced Curriculum Vitae (CV)</CardTitle>
+            <CardTitle>Curriculum Vitae (CV)</CardTitle>
             <CardDescription>
               Create a comprehensive CV with auto-save and progress tracking
             </CardDescription>

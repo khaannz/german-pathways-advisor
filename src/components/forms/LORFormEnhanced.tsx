@@ -300,7 +300,7 @@ export function LORFormEnhanced() {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Enhanced Letter of Recommendation</CardTitle>
+            <CardTitle>Letter of Recommendation</CardTitle>
             <CardDescription>
               Provide comprehensive information about your recommender and relationship
             </CardDescription>
