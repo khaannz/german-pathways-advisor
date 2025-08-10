@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { User, Mail, Phone, MapPin, GraduationCap, Building, Calendar, Edit2, Save, X } from 'lucide-react';
+import { User, Mail, Phone, MapPin, GraduationCap, Building, Calendar, Edit2, Save, X, Camera } from 'lucide-react';
+import ProfilePhotoUploader from '@/components/ProfilePhotoUploader';
 
 interface Profile {
   id: string;
@@ -25,6 +26,7 @@ interface Profile {
   role: string;
   created_at: string;
   updated_at: string;
+  avatar_url?: string | null;
 }
 
 const Profile = () => {
@@ -231,7 +233,7 @@ const Profile = () => {
               <CardHeader className="text-center pb-4">
                 <div className="flex justify-center mb-4">
                   <Avatar className="h-24 w-24">
-                    <AvatarImage src="" alt={profile?.full_name || 'User'} />
+                    <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || 'User'} />
                     <AvatarFallback className="text-lg">
                       {profile?.full_name ? getInitials(profile.full_name) : 'U'}
                     </AvatarFallback>
@@ -242,6 +244,9 @@ const Profile = () => {
                   <Mail className="h-4 w-4" />
                   {user.email}
                 </CardDescription>
+                <div className="mt-4">
+                  <ProfilePhotoUploader userId={user.id} currentUrl={profile?.avatar_url} onUploaded={() => fetchProfile()} />
+                </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -385,50 +390,52 @@ const Profile = () => {
 
                 <Separator />
 
-                <div className="space-y-4">
-                  <h3 className="text-lg font-semibold flex items-center gap-2">
-                    <GraduationCap className="h-5 w-5" />
-                    Academic Interests
-                  </h3>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="target_program" className="flex items-center gap-2">
-                      <Building className="h-4 w-4" />
-                      Target Program
-                    </Label>
-                    {editing ? (
-                      <Input
-                        id="target_program"
-                        value={formData.target_program}
-                        onChange={(e) => setFormData(prev => ({ ...prev, target_program: e.target.value }))}
-                        placeholder="e.g., Master's in Computer Science"
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-2">
-                        {profile?.target_program || 'Not specified'}
-                      </p>
-                    )}
-                  </div>
+                {userRole !== 'employee' && (
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <GraduationCap className="h-5 w-5" />
+                      Academic Interests
+                    </h3>
+                    
+                    <div className="space-y-2">
+                      <Label htmlFor="target_program" className="flex items-center gap-2">
+                        <Building className="h-4 w-4" />
+                        Target Program
+                      </Label>
+                      {editing ? (
+                        <Input
+                          id="target_program"
+                          value={formData.target_program}
+                          onChange={(e) => setFormData(prev => ({ ...prev, target_program: e.target.value }))}
+                          placeholder="e.g., Master's in Computer Science"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground py-2">
+                          {profile?.target_program || 'Not specified'}
+                        </p>
+                      )}
+                    </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="target_university" className="flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      Target University
-                    </Label>
-                    {editing ? (
-                      <Input
-                        id="target_university"
-                        value={formData.target_university}
-                        onChange={(e) => setFormData(prev => ({ ...prev, target_university: e.target.value }))}
-                        placeholder="e.g., Technical University of Munich"
-                      />
-                    ) : (
-                      <p className="text-sm text-muted-foreground py-2">
-                        {profile?.target_university || 'Not specified'}
-                      </p>
-                    )}
+                    <div className="space-y-2">
+                      <Label htmlFor="target_university" className="flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        Target University
+                      </Label>
+                      {editing ? (
+                        <Input
+                          id="target_university"
+                          value={formData.target_university}
+                          onChange={(e) => setFormData(prev => ({ ...prev, target_university: e.target.value }))}
+                          placeholder="e.g., Technical University of Munich"
+                        />
+                      ) : (
+                        <p className="text-sm text-muted-foreground py-2">
+                          {profile?.target_university || 'Not specified'}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
