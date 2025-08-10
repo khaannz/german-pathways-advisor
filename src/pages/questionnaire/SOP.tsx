@@ -16,7 +16,7 @@ export default function SOPQuestionnaire() {
                 Back to Questionnaire
               </a>
             </Button>
-            <h1 className="text-3xl font-bold mb-2">Enhanced Statement of Purpose</h1>
+            <h1 className="text-3xl font-bold mb-2">Statement of Purpose</h1>
             <p className="text-muted-foreground">
               Create a comprehensive SOP with auto-save, progress tracking, and enhanced features. 
               Your progress is automatically saved every 3 seconds.

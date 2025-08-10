@@ -14,7 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { RotateCcw, Trash2, Save, Clock, CheckCircle, User, GraduationCap, Target, Globe, Award, Briefcase } from "lucide-react";
+import { RotateCcw, Save, Clock, CheckCircle, User, GraduationCap, Target, Globe, Award, Briefcase } from "lucide-react";
 
 // Enhanced validation schema
 const sopSchema = z.object({
@@ -300,45 +300,12 @@ export function SOPFormEnhanced() {
     });
   };
 
-  const handleDeleteForm = async () => {
-    if (!user || !existingResponse) return;
-
-    setLoading(true);
-    try {
-      const { error } = await supabase
-        .from("sop_responses")
-        .delete()
-        .eq("user_id", user.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "SOP form deleted successfully!",
-        duration: 5000,
-      });
-
-      setExistingResponse(null);
-      handleClearForm();
-    } catch (error) {
-      console.error("Error deleting SOP:", error);
-      toast({
-        title: "Error",
-        description: "Failed to delete SOP form. Please try again.",
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Enhanced Statement of Purpose</CardTitle>
+            <CardTitle>Statement of Purpose</CardTitle>
             <CardDescription>
               Create a comprehensive SOP with auto-save and progress tracking
             </CardDescription>
@@ -883,31 +850,6 @@ export function SOPFormEnhanced() {
                   <RotateCcw className="h-4 w-4 mr-2" />
                   Clear Form
                 </Button>
-                
-                {existingResponse && (
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button type="button" variant="destructive">
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete Form
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent>
-                      <AlertDialogHeader>
-                        <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                        <AlertDialogDescription>
-                          This action cannot be undone. This will permanently delete your SOP form data.
-                        </AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteForm} disabled={loading}>
-                          {loading ? "Deleting..." : "Delete"}
-                        </AlertDialogAction>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                )}
               </div>
             </form>
           </Form>

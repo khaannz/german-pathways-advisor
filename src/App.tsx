@@ -11,7 +11,6 @@ import Dashboard from "./pages/Dashboard";
 import EmployeeDashboard from "./pages/EmployeeDashboard";
 import Profile from "./pages/Profile";
 import ResetPassword from "./pages/ResetPassword";
-import Questionnaire from "./pages/Questionnaire";
 import QuestionnaireIndex from "./pages/questionnaire/Index";
 import SOPQuestionnaire from "./pages/questionnaire/SOP";
 import LORQuestionnaire from "./pages/questionnaire/LOR";
