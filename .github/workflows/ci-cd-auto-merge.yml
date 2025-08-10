@@ -1,0 +1,169 @@
+name: CI/CD Pipeline with Auto Merge
+
+on:
+  push:
+    branches:
+      - Vs_code_updates
+  pull_request:
+    branches:
+      - main
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/Vs_code_updates'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run type checking
+        run: npm run type-check
+        continue-on-error: false
+
+      - name: Run linting
+        run: npm run lint
+        continue-on-error: false
+
+      - name: Build application
+        run: npm run build
+        continue-on-error: false
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: dist/
+          retention-days: 1
+
+  auto-merge:
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    if: github.ref == 'refs/heads/Vs_code_updates' && success()
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Switch to main branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Merge Vs_code_updates into main
+        run: |
+          git merge origin/Vs_code_updates --no-ff -m "🚀 Auto-merge: Merge Vs_code_updates into main
+
+          ✅ All tests passed
+          ✅ Build successful
+          ✅ Type checking passed
+          ✅ Linting passed
+          
+          [skip ci]"
+
+      - name: Push changes to main
+        run: |
+          git push origin main
+
+      - name: Create success notification
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: 'Vs_code_updates',
+              per_page: 1
+            });
+            
+            if (commits.length > 0) {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commits[0].sha,
+                body: `🎉 **Auto-merge successful!**
+                
+                ✅ Changes from \`Vs_code_updates\` have been automatically merged into \`main\` branch
+                ✅ All tests passed
+                ✅ Build completed successfully
+                
+                **Workflow run:** [View details](${context.payload.repository.html_url}/actions/runs/${context.runId})`
+              });
+            }
+
+      - name: Clean up old workflow runs
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: runs } = await github.rest.actions.listWorkflowRuns({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'ci-cd-auto-merge.yml',
+              status: 'completed',
+              per_page: 50
+            });
+            
+            // Keep last 10 runs, delete older ones
+            const runsToDelete = runs.workflow_runs.slice(10);
+            
+            for (const run of runsToDelete) {
+              await github.rest.actions.deleteWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id
+              });
+            }
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: [test-and-build, auto-merge]
+    
+    steps:
+      - name: Notify failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: 'Vs_code_updates',
+              per_page: 1
+            });
+            
+            if (commits.length > 0) {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commits[0].sha,
+                body: `❌ **CI/CD Pipeline failed!**
+                
+                The auto-merge was blocked due to:
+                - Build failures
+                - Test failures  
+                - Merge conflicts
+                - Or other issues
+                
+                **Action required:** Please check the [Actions tab](${context.payload.repository.html_url}/actions/runs/${context.runId}) for details and fix the issues manually.`
+              });
+            }

@@ -1,0 +1,86 @@
+name: Auto Merge to Main
+
+on:
+  push:
+    branches:
+      - Vs_code_updates
+  pull_request:
+    branches:
+      - main
+    types: [closed]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/Vs_code_updates'
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Switch to main branch
+        run: |
+          git checkout main
+          git pull origin main
+
+      - name: Merge Vs_code_updates into main
+        run: |
+          git merge origin/Vs_code_updates --no-ff -m "Auto-merge: Merge Vs_code_updates into main [skip ci]"
+
+      - name: Push changes to main
+        run: |
+          git push origin main
+
+      - name: Create success comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: 'Vs_code_updates',
+              per_page: 1
+            });
+            
+            if (commits.length > 0) {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commits[0].sha,
+                body: '✅ **Auto-merge successful!** \n\nChanges from `Vs_code_updates` have been automatically merged into `main` branch.'
+              });
+            }
+
+  notify-failure:
+    runs-on: ubuntu-latest
+    if: failure()
+    needs: auto-merge
+    
+    steps:
+      - name: Notify merge failure
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: commits } = await github.rest.repos.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: 'Vs_code_updates',
+              per_page: 1
+            });
+            
+            if (commits.length > 0) {
+              await github.rest.repos.createCommitComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                commit_sha: commits[0].sha,
+                body: '❌ **Auto-merge failed!** \n\nThere may be merge conflicts that require manual resolution. Please check the [Actions tab](../../actions) for details.'
+              });
+            }
