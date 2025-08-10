@@ -1,0 +1,29 @@
+name: Branch Protection
+
+on:
+  push:
+    branches:
+      - main
+      - Vs_code_updates
+
+jobs:
+  branch-protection:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' && github.actor != 'github-actions[bot]'
+    
+    steps:
+      - name: Block direct pushes to main
+        uses: actions/github-script@v7
+        with:
+          script: |
+            core.setFailed('🚫 Direct pushes to main branch are not allowed! Please push to Vs_code_updates branch instead.');
+
+  validate-vs-code-updates:
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/Vs_code_updates'
+    
+    steps:
+      - name: Validate branch
+        run: |
+          echo "✅ Push to Vs_code_updates branch detected"
+          echo "🔄 Auto-merge workflow will be triggered"
