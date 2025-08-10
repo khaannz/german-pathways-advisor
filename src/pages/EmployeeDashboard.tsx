@@ -494,47 +494,20 @@ const EmployeeDashboard = () => {
     }
 
     try {
-      // First try to create a signed URL for secure access
-      const { data: signedUrlData, error: urlError } = await supabase.storage
-        .from('documents')
-        .createSignedUrl(path, 3600); // 1 hour expiry
+      // Always download as Blob to ensure reliable cross-origin downloads
+      const { data, error } = await supabase.storage.from('documents').download(path);
+      if (error) throw error;
 
-      if (urlError) {
-        console.error('Signed URL error:', urlError);
-      }
+      const url = URL.createObjectURL(data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = doc.file_name || doc.title || 'document';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
 
-      if (urlError || !signedUrlData?.signedUrl) {
-        console.log('Falling back to direct download');
-        // Fallback to direct download if signed URL fails
-        const { data, error } = await supabase.storage.from('documents').download(path);
-        if (error) {
-          console.error('Direct download error:', error);
-          throw error;
-        }
-
-        const url = URL.createObjectURL(data);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = doc.file_name || doc.title || 'document';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        
-        toast({ title: 'Success', description: 'Document downloaded successfully' });
-      } else {
-        console.log('Using signed URL for download');
-        // Use signed URL for secure download
-        const a = document.createElement('a');
-        a.href = signedUrlData.signedUrl;
-        a.download = doc.file_name || doc.title || 'document';
-        a.target = '_blank';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        
-        toast({ title: 'Success', description: 'Document download initiated' });
-      }
+      toast({ title: 'Success', description: 'Document downloaded successfully' });
     } catch (error: any) {
       console.error('Download error:', error);
       toast({ 

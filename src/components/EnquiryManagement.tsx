@@ -49,10 +49,7 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
       setLoading(true);
       let query = supabase
         .from('enquiries')
-        .select(`
-          *,
-          profiles!enquiries_user_id_fkey(full_name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       if (userId) {
@@ -62,7 +59,7 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
       const { data, error } = await query;
       
       if (error) throw error;
-      setEnquiries(data || []);
+      setEnquiries((data as Enquiry[]) || []);
     } catch (error) {
       console.error('Error fetching enquiries:', error);
       toast({
