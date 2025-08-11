@@ -184,10 +184,11 @@ const EmployeeDashboard = () => {
     setLoading(true);
     
     try {
-      const [universitiesData, sopsData, lorsData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
+      const [universitiesData, sopsData, lorsData, cvsData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
         supabase.from('shortlisted_universities').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('sops').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('lors').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('cvs').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         fetchQuestionnaireResponses(userId)
@@ -197,20 +198,17 @@ const EmployeeDashboard = () => {
       if (universitiesData.error) throw universitiesData.error;
       if (sopsData.error) throw sopsData.error;
       if (lorsData.error) throw lorsData.error;
+      if (cvsData.error) throw cvsData.error;
       if (documentsData.error) throw documentsData.error;
       if (enquiriesData.error) throw enquiriesData.error;
 
       setUniversities(universitiesData.data || []);
       setSops(sopsData.data || []);
       setLors(lorsData.data || []);
+      setCvResponses(cvsData.data || []);
       setDocuments((documentsData.data || []) as Document[]);
       setEnquiries((enquiriesData.data || []) as Enquiry[]);
       setQuestionnaireResponses(questionnaireData);
-      
-      // Load CVs from localStorage (since no cv table exists yet)
-      const existingCVs = JSON.parse(localStorage.getItem('employeeCVs') || '[]');
-      const userCVs = existingCVs.filter((cv: CVResponse) => cv.user_id === userId);
-      setCvResponses(userCVs);
       
       // Load tasks from localStorage
       const existingTasks = JSON.parse(localStorage.getItem('employeeTasks') || '[]');
@@ -390,28 +388,23 @@ const EmployeeDashboard = () => {
     }
 
     try {
-      // For now, we'll store CVs in localStorage since the table structure needs to match SOP/LOR
-      // In a real implementation, this would be saved to a cv table in the database
-      const newCV: CVResponse = {
-        id: Date.now().toString(),
-        user_id: selectedUserId,
-        title: cvForm.title.trim(),
-        google_docs_link: cvForm.google_docs_link.trim(),
-        created_at: new Date().toISOString(),
-      };
+      // Save CV to database like SOPs and LORs
+      const { error } = await supabase
+        .from('cvs')
+        .insert({
+          user_id: selectedUserId,
+          title: cvForm.title.trim(),
+          google_docs_link: cvForm.google_docs_link.trim()
+        });
 
-      // Add to state
-      setCvResponses(prev => [newCV, ...prev]);
-
-      // Save to localStorage
-      const existingCVs = JSON.parse(localStorage.getItem('employeeCVs') || '[]');
-      existingCVs.push(newCV);
-      localStorage.setItem('employeeCVs', JSON.stringify(existingCVs));
-
-      // Reset form
-      setCvForm({ title: '', google_docs_link: '' });
-
-      toast({ title: "Success", description: "CV added successfully" });
+      if (error) {
+        console.error('Error adding CV:', error);
+        toast({ title: "Error", description: "Failed to add CV", variant: "destructive" });
+      } else {
+        toast({ title: "Success", description: "CV added successfully" });
+        setCvForm({ title: '', google_docs_link: '' });
+        fetchUserData(selectedUserId);
+      }
     } catch (error) {
       console.error('Error adding CV:', error);
       toast({ title: "Error", description: "Failed to add CV", variant: "destructive" });
