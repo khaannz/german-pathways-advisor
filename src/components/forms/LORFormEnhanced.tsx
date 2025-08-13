@@ -22,15 +22,15 @@ const lorSchema = z.object({
   recommender_institution: z.string().min(2, "Institution is required"),
   recommender_email: z.string().email("Valid email is required"),
   recommender_phone: z.string().optional(),
-  relationship_type: z.string().min(15, "Please provide at least 15 characters"),
-  relationship_duration: z.string().min(15, "Please provide at least 15 characters"),
-  courses_projects: z.string().min(20, "Please provide at least 20 characters"),
-  key_strengths: z.string().min(20, "Please provide at least 20 characters"),
-  specific_examples: z.string().min(20, "Please provide at least 20 characters"),
-  grades_performance: z.string().min(15, "Please provide at least 15 characters"),
-  research_experience: z.string().min(15, "Please provide at least 15 characters"),
-  leadership_roles: z.string().min(15, "Please provide at least 15 characters"),
-  communication_skills: z.string().min(15, "Please provide at least 15 characters"),
+  relationship_type: z.string().optional(),
+  relationship_duration: z.string().optional(),
+  courses_projects: z.string().optional(),
+  key_strengths: z.string().optional(),
+  specific_examples: z.string().optional(),
+  grades_performance: z.string().optional(),
+  research_experience: z.string().optional(),
+  leadership_roles: z.string().optional(),
+  communication_skills: z.string().optional(),
   recommendation_strength: z.enum(["strong", "moderate", "weak"], {
     message: "Please select the strength of recommendation",
   }),
@@ -81,15 +81,15 @@ export function LORFormEnhanced() {
     if (values.recommender_designation && values.recommender_designation.length >= 2) completedFields++;
     if (values.recommender_institution && values.recommender_institution.length >= 2) completedFields++;
     if (values.recommender_email && values.recommender_email.includes('@')) completedFields++;
-    if (values.relationship_type && values.relationship_type.length >= 15) completedFields++;
-    if (values.relationship_duration && values.relationship_duration.length >= 15) completedFields++;
-    if (values.courses_projects && values.courses_projects.length >= 20) completedFields++;
-    if (values.key_strengths && values.key_strengths.length >= 20) completedFields++;
-    if (values.specific_examples && values.specific_examples.length >= 20) completedFields++;
-    if (values.grades_performance && values.grades_performance.length >= 15) completedFields++;
-    if (values.research_experience && values.research_experience.length >= 15) completedFields++;
-    if (values.leadership_roles && values.leadership_roles.length >= 15) completedFields++;
-    if (values.communication_skills && values.communication_skills.length >= 15) completedFields++;
+    if (values.relationship_type && values.relationship_type.length > 0) completedFields++;
+    if (values.relationship_duration && values.relationship_duration.length > 0) completedFields++;
+    if (values.courses_projects && values.courses_projects.length > 0) completedFields++;
+    if (values.key_strengths && values.key_strengths.length > 0) completedFields++;
+    if (values.specific_examples && values.specific_examples.length > 0) completedFields++;
+    if (values.grades_performance && values.grades_performance.length > 0) completedFields++;
+    if (values.research_experience && values.research_experience.length > 0) completedFields++;
+    if (values.leadership_roles && values.leadership_roles.length > 0) completedFields++;
+    if (values.communication_skills && values.communication_skills.length > 0) completedFields++;
     if (values.recommendation_strength) completedFields++;
 
     setProgress((completedFields / totalFields) * 100);

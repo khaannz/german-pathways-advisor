@@ -188,7 +188,7 @@ const EmployeeDashboard = () => {
         supabase.from('shortlisted_universities').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('sops').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('lors').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
-        supabase.from('cvs').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('cv_responses').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         fetchQuestionnaireResponses(userId)

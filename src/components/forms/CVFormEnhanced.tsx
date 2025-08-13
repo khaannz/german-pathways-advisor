@@ -33,7 +33,7 @@ const workExperienceEntrySchema = z.object({
   position: z.string().min(2, "Position is required"),
   start_date: z.date({ message: "Start date is required" }),
   end_date: z.date().optional(),
-  description: z.string().min(10, "Please provide at least 10 characters"),
+  description: z.string().optional(),
   technologies: z.string().optional(),
   achievements: z.string().optional(),
 });
@@ -41,12 +41,12 @@ const workExperienceEntrySchema = z.object({
 const cvSchema = z.object({
   education_entries: z.array(educationEntrySchema).min(1, "At least one education entry is required"),
   work_experience_entries: z.array(workExperienceEntrySchema).min(1, "At least one work experience entry is required"),
-  technical_skills: z.string().min(15, "Please provide at least 15 characters"),
-  soft_skills: z.string().min(15, "Please provide at least 15 characters"),
-  languages: z.string().min(15, "Please provide at least 15 characters"),
-  certifications: z.string().min(15, "Please provide at least 15 characters"),
-  extracurriculars: z.string().min(15, "Please provide at least 15 characters"),
-  summary: z.string().min(50, "Please provide a professional summary (at least 50 characters)"),
+  technical_skills: z.string().optional(),
+  soft_skills: z.string().optional(),
+  languages: z.string().optional(),
+  certifications: z.string().optional(),
+  extracurriculars: z.string().optional(),
+  summary: z.string().optional(),
 });
 
 type CVFormData = z.infer<typeof cvSchema>;
@@ -132,12 +132,12 @@ export function CVFormEnhanced() {
     const totalFields = 7; // summary, technical_skills, soft_skills, languages, certifications, extracurriculars, education_entries, work_experience_entries
     let completedFields = 0;
 
-    if (values.summary && values.summary.length >= 50) completedFields++;
-    if (values.technical_skills && values.technical_skills.length >= 15) completedFields++;
-    if (values.soft_skills && values.soft_skills.length >= 15) completedFields++;
-    if (values.languages && values.languages.length >= 15) completedFields++;
-    if (values.certifications && values.certifications.length >= 15) completedFields++;
-    if (values.extracurriculars && values.extracurriculars.length >= 15) completedFields++;
+    if (values.summary && values.summary.length > 0) completedFields++;
+    if (values.technical_skills && values.technical_skills.length > 0) completedFields++;
+    if (values.soft_skills && values.soft_skills.length > 0) completedFields++;
+    if (values.languages && values.languages.length > 0) completedFields++;
+    if (values.certifications && values.certifications.length > 0) completedFields++;
+    if (values.extracurriculars && values.extracurriculars.length > 0) completedFields++;
     
     // Check if at least one education and work experience entry is complete
     const hasCompleteEducation = values.education_entries.some(entry => 

@@ -26,22 +26,22 @@ const sopSchema = z.object({
   linked_in: z.string().optional().refine((val) => !val || val === "" || z.string().url().safeParse(val).success, {
     message: "Please enter a valid LinkedIn URL or leave empty"
   }),
-  current_education_status: z.string().min(15, "Please provide at least 15 characters"),
-  intended_program: z.string().min(15, "Please provide at least 15 characters"),
-  target_universities: z.string().min(15, "Please provide at least 15 characters"),
-  why_this_program: z.string().min(20, "Please provide at least 20 characters"),
-  why_germany: z.string().min(20, "Please provide at least 20 characters"),
-  short_term_goals: z.string().min(20, "Please provide at least 20 characters"),
-  long_term_goals: z.string().min(20, "Please provide at least 20 characters"),
+  current_education_status: z.string().optional(),
+  intended_program: z.string().optional(),
+  target_universities: z.string().optional(),
+  why_this_program: z.string().optional(),
+  why_germany: z.string().optional(),
+  short_term_goals: z.string().optional(),
+  long_term_goals: z.string().optional(),
   has_thesis: z.boolean(),
   thesis_details: z.string().optional(),
-  academic_projects: z.string().min(20, "Please provide at least 20 characters"),
-  work_experience: z.string().min(15, "Please provide at least 15 characters"),
-  personal_qualities: z.string().min(20, "Please provide at least 20 characters"),
-  challenges_accomplishments: z.string().min(20, "Please provide at least 20 characters"),
-  research_interests: z.string().min(15, "Please provide at least 15 characters"),
-  language_proficiency: z.string().min(15, "Please provide at least 15 characters"),
-  financial_planning: z.string().min(15, "Please provide at least 15 characters"),
+  academic_projects: z.string().optional(),
+  work_experience: z.string().optional(),
+  personal_qualities: z.string().optional(),
+  challenges_accomplishments: z.string().optional(),
+  research_interests: z.string().optional(),
+  language_proficiency: z.string().optional(),
+  financial_planning: z.string().optional(),
 });
 
 type SOPFormData = z.infer<typeof sopSchema>;
@@ -100,20 +100,20 @@ export function SOPFormEnhanced() {
     if (values.phone && values.phone.length >= 10) completedFields++;
     if (values.nationality && values.nationality.length >= 2) completedFields++;
     if (values.date_of_birth && values.date_of_birth.length >= 1) completedFields++;
-    if (values.current_education_status && values.current_education_status.length >= 15) completedFields++;
-    if (values.intended_program && values.intended_program.length >= 15) completedFields++;
-    if (values.target_universities && values.target_universities.length >= 15) completedFields++;
-    if (values.why_this_program && values.why_this_program.length >= 20) completedFields++;
-    if (values.why_germany && values.why_germany.length >= 20) completedFields++;
-    if (values.short_term_goals && values.short_term_goals.length >= 20) completedFields++;
-    if (values.long_term_goals && values.long_term_goals.length >= 20) completedFields++;
-    if (values.academic_projects && values.academic_projects.length >= 20) completedFields++;
-    if (values.work_experience && values.work_experience.length >= 15) completedFields++;
-    if (values.personal_qualities && values.personal_qualities.length >= 20) completedFields++;
-    if (values.challenges_accomplishments && values.challenges_accomplishments.length >= 20) completedFields++;
-    if (values.research_interests && values.research_interests.length >= 15) completedFields++;
-    if (values.language_proficiency && values.language_proficiency.length >= 15) completedFields++;
-    if (values.financial_planning && values.financial_planning.length >= 15) completedFields++;
+    if (values.current_education_status && values.current_education_status.length > 0) completedFields++;
+    if (values.intended_program && values.intended_program.length > 0) completedFields++;
+    if (values.target_universities && values.target_universities.length > 0) completedFields++;
+    if (values.why_this_program && values.why_this_program.length > 0) completedFields++;
+    if (values.why_germany && values.why_germany.length > 0) completedFields++;
+    if (values.short_term_goals && values.short_term_goals.length > 0) completedFields++;
+    if (values.long_term_goals && values.long_term_goals.length > 0) completedFields++;
+    if (values.academic_projects && values.academic_projects.length > 0) completedFields++;
+    if (values.work_experience && values.work_experience.length > 0) completedFields++;
+    if (values.personal_qualities && values.personal_qualities.length > 0) completedFields++;
+    if (values.challenges_accomplishments && values.challenges_accomplishments.length > 0) completedFields++;
+    if (values.research_interests && values.research_interests.length > 0) completedFields++;
+    if (values.language_proficiency && values.language_proficiency.length > 0) completedFields++;
+    if (values.financial_planning && values.financial_planning.length > 0) completedFields++;
 
     setProgress((completedFields / totalFields) * 100);
   }, [form]);
