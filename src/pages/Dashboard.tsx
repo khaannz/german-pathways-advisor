@@ -106,10 +106,9 @@ const Dashboard = () => {
       setDataLoading(true);
       
       // Fetch all data in parallel
-      const [universitiesData, sopsData, cvsData, lorsData, cvResponsesData, documentsData, enquiriesData] = await Promise.all([
+      const [universitiesData, sopsData, lorsData, cvResponsesData, documentsData, enquiriesData] = await Promise.all([
         supabase.from('shortlisted_universities').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('sops').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
-        supabase.from('cv_responses').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('lors').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('cv_responses').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
         supabase.from('documents').select('*').eq('user_id', user?.id).order('created_at', { ascending: false }),
@@ -119,7 +118,6 @@ const Dashboard = () => {
       // Check for errors
       if (universitiesData.error) throw universitiesData.error;
       if (sopsData.error) throw sopsData.error;
-      if (cvsData.error) throw cvsData.error;
       if (lorsData.error) throw lorsData.error;
       if (cvResponsesData.error) throw cvResponsesData.error;
       if (documentsData.error) throw documentsData.error;
@@ -128,7 +126,7 @@ const Dashboard = () => {
       // Set state
       setUniversities(universitiesData.data || []);
       setSops(sopsData.data || []);
-      setCvs(cvsData.data || []);
+      setCvs([]); // Empty for now since cvs table isn't in types
       setLors(lorsData.data || []);
       setCvResponses(cvResponsesData.data || []);
       setDocuments(documentsData.data || []);
@@ -138,7 +136,7 @@ const Dashboard = () => {
       calculateStats(
         universitiesData.data || [],
         sopsData.data || [],
-        cvsData.data || [],
+        [], // Empty cvs
         lorsData.data || [],
         documentsData.data || [],
         enquiriesData.data || []
