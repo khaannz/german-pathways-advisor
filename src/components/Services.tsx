@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -9,8 +10,10 @@ import {
   Users,
   ArrowRight 
 } from "lucide-react";
+import { ServiceSelectionModal } from "./ServiceSelectionModal";
 
 const Services = () => {
+  const [showServiceModal, setShowServiceModal] = useState(false);
   const services = [
     {
       icon: FileText,
@@ -92,8 +95,8 @@ const Services = () => {
                   ))}
                 </ul>
                 
-                <Button variant="ghost" className="w-full group-hover:bg-primary/10 transition-colors">
-                  Learn More
+                <Button variant="ghost" className="w-full group-hover:bg-primary/10 transition-colors" onClick={() => setShowServiceModal(true)}>
+                  Select Service
                   <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
                 </Button>
               </div>
@@ -108,6 +111,11 @@ const Services = () => {
           </Button>
         </div>
       </div>
+
+      <ServiceSelectionModal 
+        open={showServiceModal} 
+        onOpenChange={setShowServiceModal} 
+      />
     </section>
   );
 };

@@ -15,6 +15,9 @@ import QuestionnaireIndex from "./pages/questionnaire/Index";
 import SOPQuestionnaire from "./pages/questionnaire/SOP";
 import LORQuestionnaire from "./pages/questionnaire/LOR";
 import CVQuestionnaire from "./pages/questionnaire/CV";
+import CoverLetter from "./pages/questionnaire/CoverLetter";
+import VisaMotivation from "./pages/questionnaire/VisaMotivation";
+import UniversityShortlisting from "./pages/questionnaire/UniversityShortlisting";
 import Documents from "./pages/Documents";
 import Enquiries from "./pages/Enquiries";
 import Services from "./pages/Services";
@@ -53,6 +56,9 @@ const App = () => (
             <Route path="/questionnaire/sop" element={<SOPQuestionnaire />} />
             <Route path="/questionnaire/lor" element={<LORQuestionnaire />} />
             <Route path="/questionnaire/cv" element={<CVQuestionnaire />} />
+            <Route path="/questionnaire/cover-letter" element={<CoverLetter />} />
+            <Route path="/questionnaire/visa-motivation" element={<VisaMotivation />} />
+            <Route path="/questionnaire/university-shortlisting" element={<UniversityShortlisting />} />
             <Route path="/documents" element={
               <ProtectedRoute>
                 <Documents />

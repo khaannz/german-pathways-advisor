@@ -7,13 +7,64 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "13.0.4"
   }
   public: {
     Tables: {
+      cover_letter_responses: {
+        Row: {
+          additional_info: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          key_achievements: string | null
+          phone: string | null
+          relevant_experience: string | null
+          skills_match: string | null
+          target_company: string | null
+          target_position: string | null
+          updated_at: string
+          user_id: string
+          why_interested: string | null
+        }
+        Insert: {
+          additional_info?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          key_achievements?: string | null
+          phone?: string | null
+          relevant_experience?: string | null
+          skills_match?: string | null
+          target_company?: string | null
+          target_position?: string | null
+          updated_at?: string
+          user_id: string
+          why_interested?: string | null
+        }
+        Update: {
+          additional_info?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          key_achievements?: string | null
+          phone?: string | null
+          relevant_experience?: string | null
+          skills_match?: string | null
+          target_company?: string | null
+          target_position?: string | null
+          updated_at?: string
+          user_id?: string
+          why_interested?: string | null
+        }
+        Relationships: []
+      }
       cv_education_entries: {
         Row: {
           achievements: string | null
@@ -164,6 +215,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      cvs: {
+        Row: {
+          created_at: string
+          google_docs_link: string
+          id: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          google_docs_link: string
+          id?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          google_docs_link?: string
+          id?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       documents: {
         Row: {
@@ -340,6 +418,7 @@ export type Database = {
           created_at: string
           full_name: string | null
           id: string
+          package_type: string | null
           phone: string | null
           role: string
           target_program: string | null
@@ -353,6 +432,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          package_type?: string | null
           phone?: string | null
           role?: string
           target_program?: string | null
@@ -366,6 +446,7 @@ export type Database = {
           created_at?: string
           full_name?: string | null
           id?: string
+          package_type?: string | null
           phone?: string | null
           role?: string
           target_program?: string | null
@@ -593,6 +674,165 @@ export type Database = {
         }
         Relationships: []
       }
+      university_shortlisting_responses: {
+        Row: {
+          academic_background: string | null
+          budget_range: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          gpa_score: string | null
+          id: string
+          language_requirements: string | null
+          location_preference: string | null
+          phone: string | null
+          preferred_field: string | null
+          research_interests: string | null
+          specific_requirements: string | null
+          test_scores: string | null
+          updated_at: string
+          user_id: string
+          work_experience: string | null
+        }
+        Insert: {
+          academic_background?: string | null
+          budget_range?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          gpa_score?: string | null
+          id?: string
+          language_requirements?: string | null
+          location_preference?: string | null
+          phone?: string | null
+          preferred_field?: string | null
+          research_interests?: string | null
+          specific_requirements?: string | null
+          test_scores?: string | null
+          updated_at?: string
+          user_id: string
+          work_experience?: string | null
+        }
+        Update: {
+          academic_background?: string | null
+          budget_range?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          gpa_score?: string | null
+          id?: string
+          language_requirements?: string | null
+          location_preference?: string | null
+          phone?: string | null
+          preferred_field?: string | null
+          research_interests?: string | null
+          specific_requirements?: string | null
+          test_scores?: string | null
+          updated_at?: string
+          user_id?: string
+          work_experience?: string | null
+        }
+        Relationships: []
+      }
+      user_services: {
+        Row: {
+          created_at: string
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          purchased_at: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          purchased_at?: string
+          service_type: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          purchased_at?: string
+          service_type?: Database["public"]["Enums"]["service_type"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      visa_motivation_responses: {
+        Row: {
+          academic_background: string | null
+          accommodation_plans: string | null
+          additional_documents: string | null
+          created_at: string
+          email: string | null
+          financial_proof: string | null
+          full_name: string | null
+          future_plans_germany: string | null
+          id: string
+          intended_program: string | null
+          language_proficiency: string | null
+          motivation_reasons: string | null
+          nationality: string | null
+          passport_number: string | null
+          phone: string | null
+          program_duration: string | null
+          university_name: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          academic_background?: string | null
+          accommodation_plans?: string | null
+          additional_documents?: string | null
+          created_at?: string
+          email?: string | null
+          financial_proof?: string | null
+          full_name?: string | null
+          future_plans_germany?: string | null
+          id?: string
+          intended_program?: string | null
+          language_proficiency?: string | null
+          motivation_reasons?: string | null
+          nationality?: string | null
+          passport_number?: string | null
+          phone?: string | null
+          program_duration?: string | null
+          university_name?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          academic_background?: string | null
+          accommodation_plans?: string | null
+          additional_documents?: string | null
+          created_at?: string
+          email?: string | null
+          financial_proof?: string | null
+          full_name?: string | null
+          future_plans_germany?: string | null
+          id?: string
+          intended_program?: string | null
+          language_proficiency?: string | null
+          motivation_reasons?: string | null
+          nationality?: string | null
+          passport_number?: string | null
+          phone?: string | null
+          program_duration?: string | null
+          university_name?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -605,6 +845,12 @@ export type Database = {
     }
     Enums: {
       application_status: "not_applied" | "in_progress" | "applied"
+      service_type:
+        | "sop"
+        | "lor"
+        | "university_shortlisting"
+        | "cover_letter"
+        | "visa_motivation"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -733,6 +979,13 @@ export const Constants = {
   public: {
     Enums: {
       application_status: ["not_applied", "in_progress", "applied"],
+      service_type: [
+        "sop",
+        "lor",
+        "university_shortlisting",
+        "cover_letter",
+        "visa_motivation",
+      ],
     },
   },
 } as const

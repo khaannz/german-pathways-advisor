@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { GraduationCap, Phone, Mail, LogOut, User, FileText, Upload, MessageSquare } from "lucide-react";
@@ -8,8 +9,10 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
+import { ContactModal } from "./ContactModal";
 
 const Header = () => {
+  const [showContactModal, setShowContactModal] = useState(false);
   const { user, signOut, isEmployee } = useAuth();
   return (
     <header className="w-full bg-background/95 backdrop-blur-sm border-b border-border sticky top-0 z-50">
@@ -29,7 +32,13 @@ const Header = () => {
             <Link to="/services" className="text-foreground hover:text-primary transition-colors">Services</Link>
             <Link to="/about" className="text-foreground hover:text-primary transition-colors">About</Link>
             <Link to="/success-stories" className="text-foreground hover:text-primary transition-colors">Success Stories</Link>
-            <a href="#contact" className="text-foreground hover:text-primary transition-colors">Contact</a>
+            <Button 
+              variant="ghost" 
+              onClick={() => setShowContactModal(true)}
+              className="text-foreground hover:text-primary transition-colors"
+            >
+              Contact
+            </Button>
           </nav>
           
           <div className="flex items-center gap-2">
@@ -112,6 +121,11 @@ const Header = () => {
           </div>
         </div>
       </div>
+
+      <ContactModal 
+        open={showContactModal} 
+        onOpenChange={setShowContactModal} 
+      />
     </header>
   );
 };
