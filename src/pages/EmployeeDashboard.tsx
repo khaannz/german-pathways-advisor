@@ -386,7 +386,11 @@ const EmployeeDashboard = () => {
 
   const handleAddCV = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('handleAddCV called with selectedUserId:', selectedUserId);
+    console.log('cvForm:', cvForm);
+    
     if (!selectedUserId || !cvForm.title.trim() || !cvForm.google_docs_link.trim()) {
+      console.log('Validation failed - missing fields');
       toast({ 
         title: "Validation Error", 
         description: "Please fill in all required fields", 
@@ -398,15 +402,18 @@ const EmployeeDashboard = () => {
     // Validate URL format
     try {
       new URL(cvForm.google_docs_link);
+      console.log('URL validation passed');
     } catch {
       toast({ 
         title: "Validation Error", 
         description: "Please enter a valid URL", 
         variant: "destructive" 
       });
+      console.log('URL validation failed');
       return;
     }
 
+    console.log('Attempting to insert CV into database...');
     const { error } = await supabase
       .from('cvs')
       .insert({
@@ -419,6 +426,7 @@ const EmployeeDashboard = () => {
       console.error('Error adding CV:', error);
       toast({ title: "Error", description: "Failed to add CV", variant: "destructive" });
     } else {
+      console.log('CV added successfully');
       toast({ title: "Success", description: "CV added successfully" });
       setCvForm({ title: '', google_docs_link: '' });
       fetchUserData(selectedUserId);
