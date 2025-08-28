@@ -302,6 +302,114 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleDeleteUniversity = async (universityId: string) => {
+    try {
+      const { error } = await supabase
+        .from('shortlisted_universities')
+        .delete()
+        .eq('id', universityId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "University removed",
+        description: "University has been removed from the shortlist.",
+      });
+      
+      if (selectedUserId) {
+        fetchUserData(selectedUserId);
+      }
+    } catch (error) {
+      console.error('Error deleting university:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove university.",
+      });
+    }
+  };
+
+  const handleDeleteSOP = async (sopId: string) => {
+    try {
+      const { error } = await supabase
+        .from('sops')
+        .delete()
+        .eq('id', sopId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "SOP removed",
+        description: "SOP has been removed.",
+      });
+      
+      if (selectedUserId) {
+        fetchUserData(selectedUserId);
+      }
+    } catch (error) {
+      console.error('Error deleting SOP:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove SOP.",
+      });
+    }
+  };
+
+  const handleDeleteLOR = async (lorId: string) => {
+    try {
+      const { error } = await supabase
+        .from('lors')
+        .delete()
+        .eq('id', lorId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "LOR removed",
+        description: "LOR has been removed.",
+      });
+      
+      if (selectedUserId) {
+        fetchUserData(selectedUserId);
+      }
+    } catch (error) {
+      console.error('Error deleting LOR:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove LOR.",
+      });
+    }
+  };
+
+  const handleDeleteCV = async (cvId: string) => {
+    try {
+      const { error } = await supabase
+        .from('cvs')
+        .delete()
+        .eq('id', cvId);
+
+      if (error) throw error;
+      
+      toast({
+        title: "CV removed",
+        description: "CV has been removed.",
+      });
+      
+      if (selectedUserId) {
+        fetchUserData(selectedUserId);
+      }
+    } catch (error) {
+      console.error('Error deleting CV:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to remove CV.",
+      });
+    }
+  };
+
   const handleAddSOP = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId || !sopForm.title.trim() || !sopForm.google_docs_link.trim()) {

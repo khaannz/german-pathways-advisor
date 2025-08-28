@@ -112,7 +112,7 @@ const Dashboard = () => {
 
       setUniversities(universitiesData.data || []);
       setDocuments(documentsData.data || []);
-      setEnquiries(enquiriesData.data || []);
+      setEnquiries((enquiriesData.data || []) as Enquiry[]);
       setSops(sopsData.data || []);
       setLors(lorsData.data || []);
       setCvs(cvsData.data || []);
