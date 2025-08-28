@@ -49,6 +49,14 @@ interface LOR {
   created_at: string;
 }
 
+interface CV {
+  id: string;
+  user_id: string;
+  title: string;
+  google_docs_link: string;
+  created_at: string;
+}
+
 interface CVResponse {
   id: string;
   user_id: string;
@@ -131,6 +139,7 @@ const EmployeeDashboard = () => {
   const [universities, setUniversities] = useState<ShortlistedUniversity[]>([]);
   const [sops, setSops] = useState<SOP[]>([]);
   const [lors, setLors] = useState<LOR[]>([]);
+  const [cvs, setCvs] = useState<CV[]>([]);
   const [cvResponses, setCvResponses] = useState<CVResponse[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
@@ -192,10 +201,11 @@ const EmployeeDashboard = () => {
     setLoading(true);
     
     try {
-      const [universitiesData, sopsData, lorsData, cvResponsesData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
+      const [universitiesData, sopsData, lorsData, cvsData, cvResponsesData, documentsData, enquiriesData, questionnaireData] = await Promise.all([
         supabase.from('shortlisted_universities').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('sops').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('lors').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
+        supabase.from('cvs').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('cv_responses').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('documents').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
         supabase.from('enquiries').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
@@ -206,6 +216,7 @@ const EmployeeDashboard = () => {
       if (universitiesData.error) throw universitiesData.error;
       if (sopsData.error) throw sopsData.error;
       if (lorsData.error) throw lorsData.error;
+      if (cvsData.error) throw cvsData.error;
       if (cvResponsesData.error) throw cvResponsesData.error;
       if (documentsData.error) throw documentsData.error;
       if (enquiriesData.error) throw enquiriesData.error;
@@ -213,6 +224,7 @@ const EmployeeDashboard = () => {
       setUniversities(universitiesData.data || []);
       setSops(sopsData.data || []);
       setLors(lorsData.data || []);
+      setCvs(cvsData.data || []);
       setCvResponses((cvResponsesData.data || []) as CVResponse[]);
       setDocuments((documentsData.data || []) as Document[]);
       setEnquiries((enquiriesData.data || []) as Enquiry[]);
@@ -395,16 +407,21 @@ const EmployeeDashboard = () => {
       return;
     }
 
-    try {
-      // Note: cvs table functionality disabled due to type constraints
-      toast({ 
-        title: "Notice", 
-        description: "CV creation temporarily unavailable", 
-        variant: "default" 
+    const { error } = await supabase
+      .from('cvs')
+      .insert({
+        user_id: selectedUserId,
+        title: cvForm.title.trim(),
+        google_docs_link: cvForm.google_docs_link.trim()
       });
-    } catch (error) {
+
+    if (error) {
       console.error('Error adding CV:', error);
       toast({ title: "Error", description: "Failed to add CV", variant: "destructive" });
+    } else {
+      toast({ title: "Success", description: "CV added successfully" });
+      setCvForm({ title: '', google_docs_link: '' });
+      fetchUserData(selectedUserId);
     }
   };
 
@@ -1016,49 +1033,41 @@ const EmployeeDashboard = () => {
                       </CardContent>
                     </Card>
 
-                     <Card>
-                       <CardHeader>
-                         <CardTitle>CV Responses</CardTitle>
-                       </CardHeader>
-                       <CardContent>
-                         {cvResponses.length === 0 ? (
-                           <div className="text-center py-8 text-muted-foreground">
-                             <User className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                             <p>No CV responses found</p>
-                           </div>
-                         ) : (
-                           <div className="grid gap-4">
-                             {cvResponses.map((cv) => (
-                               <Card key={cv.id} className="p-4">
-                                 <div className="space-y-2">
-                                   <div className="flex justify-between items-start">
-                                     <h4 className="font-medium text-sm">CV Response</h4>
-                                     <p className="text-xs text-muted-foreground">
-                                       {format(new Date(cv.created_at), 'MMM dd')}
-                                     </p>
-                                   </div>
-                                   {cv.summary && (
-                                     <div>
-                                       <p className="text-xs font-medium text-muted-foreground">Summary:</p>
-                                       <p className="text-sm">{cv.summary.substring(0, 100)}...</p>
-                                     </div>
-                                   )}
-                                   <div className="flex flex-wrap gap-1 text-xs">
-                                     {cv.technical_skills && <Badge variant="outline">Tech Skills</Badge>}
-                                     {cv.work_experience && <Badge variant="outline">Work Exp</Badge>}
-                                     {cv.certifications && <Badge variant="outline">Certifications</Badge>}
-                                   </div>
-                                   <Button variant="outline" size="sm" className="mt-2 w-full">
-                                     <FileText className="h-3 w-3 mr-1" />
-                                     View Full Response
-                                   </Button>
-                                 </div>
-                               </Card>
-                             ))}
-                           </div>
-                         )}
-                       </CardContent>
-                     </Card>
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>CVs</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Title</TableHead>
+                              <TableHead>Link</TableHead>
+                              <TableHead>Date Added</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {cvs.map((cv) => (
+                              <TableRow key={cv.id}>
+                                <TableCell>{cv.title}</TableCell>
+                                <TableCell>
+                                  <a
+                                    href={cv.google_docs_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-primary hover:underline"
+                                  >
+                                    View Document
+                                  </a>
+                                </TableCell>
+                                <TableCell>{new Date(cv.created_at).toLocaleDateString()}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CardContent>
+                    </Card>
+
                   </TabsContent>
 
                   <TabsContent value="documents" className="space-y-4">
