@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Users, FileText, UserCheck, Search, Upload, MessageSquare, Calendar, CheckCircle, Clock, ExternalLink, Download, User } from 'lucide-react';
+import { Plus, Users, FileText, UserCheck, Search, Upload, MessageSquare, Calendar, CheckCircle, Clock, ExternalLink, Download, User, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import DocumentDownloadManager from '@/components/DocumentDownloadManager';
 import { TaskList } from '@/components/TaskList';
@@ -777,16 +777,16 @@ const EmployeeDashboard = () => {
             <div className="lg:col-span-3">
               {selectedUserId ? (
                 <Tabs defaultValue="universities" className="w-full">
-            <TabsList className="grid w-full grid-cols-8">
-              <TabsTrigger value="universities">Universities</TabsTrigger>
-              <TabsTrigger value="sops">SOPs</TabsTrigger>
-              <TabsTrigger value="lors">LORs</TabsTrigger>
-              <TabsTrigger value="cvs">CVs</TabsTrigger>
-              <TabsTrigger value="documents">Documents</TabsTrigger>
-              <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
-              <TabsTrigger value="questionnaire">Responses</TabsTrigger>
-              <TabsTrigger value="tasks">Tasks</TabsTrigger>
-            </TabsList>
+                  <TabsList className="grid w-full grid-cols-8">
+                    <TabsTrigger value="universities">Universities</TabsTrigger>
+                    <TabsTrigger value="sops">SOPs</TabsTrigger>
+                    <TabsTrigger value="lors">LORs</TabsTrigger>
+                    <TabsTrigger value="cvs">CVs</TabsTrigger>
+                    <TabsTrigger value="documents">Documents</TabsTrigger>
+                    <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
+                    <TabsTrigger value="questionnaire">Responses</TabsTrigger>
+                    <TabsTrigger value="tasks">Tasks</TabsTrigger>
+                  </TabsList>
                   
                   <TabsContent value="universities" className="space-y-4">
                     <Card>
@@ -848,6 +848,7 @@ const EmployeeDashboard = () => {
                               <TableHead>Program</TableHead>
                               <TableHead>Status</TableHead>
                               <TableHead>Date Added</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -857,6 +858,16 @@ const EmployeeDashboard = () => {
                                 <TableCell>{university.program_name}</TableCell>
                                 <TableCell>{getStatusBadge(university.application_status)}</TableCell>
                                 <TableCell>{new Date(university.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteUniversity(university.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -910,6 +921,7 @@ const EmployeeDashboard = () => {
                               <TableHead>Title</TableHead>
                               <TableHead>Link</TableHead>
                               <TableHead>Date Added</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -927,6 +939,16 @@ const EmployeeDashboard = () => {
                                   </a>
                                 </TableCell>
                                 <TableCell>{new Date(sop.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteSOP(sop.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -980,6 +1002,7 @@ const EmployeeDashboard = () => {
                               <TableHead>Title</TableHead>
                               <TableHead>Link</TableHead>
                               <TableHead>Date Added</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -997,6 +1020,16 @@ const EmployeeDashboard = () => {
                                   </a>
                                 </TableCell>
                                 <TableCell>{new Date(lor.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteLOR(lor.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -1052,6 +1085,7 @@ const EmployeeDashboard = () => {
                               <TableHead>Title</TableHead>
                               <TableHead>Link</TableHead>
                               <TableHead>Date Added</TableHead>
+                              <TableHead>Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -1069,13 +1103,22 @@ const EmployeeDashboard = () => {
                                   </a>
                                 </TableCell>
                                 <TableCell>{new Date(cv.created_at).toLocaleDateString()}</TableCell>
+                                <TableCell>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDeleteCV(cv.id)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
                         </Table>
                       </CardContent>
                     </Card>
-
                   </TabsContent>
 
                   <TabsContent value="documents" className="space-y-4">
