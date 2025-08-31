@@ -267,7 +267,7 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({
                       <MessageSquare className="h-4 w-4 mr-2" />
                       Comments
                     </Button>
-                    {enquiry.status === 'open' && (
+                    {isEmployee && enquiry.status === 'open' && (
                       <>
                         <Dialog>
                           <DialogTrigger asChild>
@@ -306,7 +306,7 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({
                               <Button variant="outline" onClick={() => setSelectedEnquiry(null)}>
                                 Cancel
                               </Button>
-                              <Button 
+                              <Button
                                 onClick={() => handleRespondToEnquiry(enquiry.id, responseText)}
                                 disabled={isRespondingToEnquiry || !responseText.trim()}
                               >
@@ -325,27 +325,29 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({
                             </DialogFooter>
                           </DialogContent>
                         </Dialog>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
+                        <Button
+                          variant="outline"
+                          size="sm"
                           onClick={() => handleUpdateStatus(enquiry.id, 'resolved')}
                         >
                           Mark Resolved
                         </Button>
                       </>
                     )}
-                    {enquiry.status === 'resolved' && (
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                    {isEmployee && enquiry.status === 'resolved' && (
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleUpdateStatus(enquiry.id, 'open')}
                       >
                         Reopen
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" onClick={() => handleDeleteEnquiry(enquiry.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {isEmployee && (
+                      <Button variant="outline" size="sm" onClick={() => handleDeleteEnquiry(enquiry.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 
