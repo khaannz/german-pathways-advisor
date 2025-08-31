@@ -10,28 +10,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { MessageSquare, Calendar, Users, CheckCircle, Clock, Reply, Send, Trash2, Filter, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
+import { Enquiry } from '@/types/enquiries';
+import EnquiryComments from './EnquiryComments';
 
-interface Enquiry {
-  id: string;
-  user_id: string;
-  subject: string;
-  message: string;
-  status: 'open' | 'resolved';
-  created_at: string;
-  employee_response?: string;
-  responded_at?: string;
-  responded_by?: string;
-  profiles?: {
-    full_name: string;
-  };
-}
 
 interface EnquiryManagementProps {
   userId?: string; // If provided, show only this user's enquiries
   className?: string;
+  currentUserId?: string;
+  isEmployee?: boolean;
 }
 
-const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className }) => {
+const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ 
+  userId, 
+  className, 
+  currentUserId, 
+  isEmployee = false 
+}) => {
   const { toast } = useToast();
   const [enquiries, setEnquiries] = useState<Enquiry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,6 +34,7 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
   const [selectedEnquiry, setSelectedEnquiry] = useState<Enquiry | null>(null);
   const [responseText, setResponseText] = useState('');
   const [isRespondingToEnquiry, setIsRespondingToEnquiry] = useState(false);
+  const [showComments, setShowComments] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEnquiries();
@@ -80,17 +76,27 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
 
     setIsRespondingToEnquiry(true);
     try {
-      const { error } = await supabase
+      // Add comment instead of updating enquiry
+      const { error: commentError } = await supabase
+        .from('enquiry_comments')
+        .insert({
+          enquiry_id: enquiryId,
+          user_id: currentUserId!,
+          comment: response.trim(),
+        });
+
+      if (commentError) throw commentError;
+
+      // Update enquiry status to resolved
+      const { error: statusError } = await supabase
         .from('enquiries')
         .update({
-          employee_response: response.trim(),
-          responded_at: new Date().toISOString(),
           status: 'resolved',
           updated_at: new Date().toISOString()
         })
         .eq('id', enquiryId);
 
-      if (error) throw error;
+      if (statusError) throw statusError;
 
       toast({ title: "Success", description: "Response sent successfully" });
       setResponseText('');
@@ -253,6 +259,14 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
                     )}
                   </div>
                   <div className="flex items-center gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setShowComments(enquiry.id)}
+                    >
+                      <MessageSquare className="h-4 w-4 mr-2" />
+                      Comments
+                    </Button>
                     {enquiry.status === 'open' && (
                       <>
                         <Dialog>
@@ -339,25 +353,26 @@ const EnquiryManagement: React.FC<EnquiryManagementProps> = ({ userId, className
                   <div className="p-4 bg-secondary/20 rounded-lg">
                     <p className="text-sm leading-relaxed">{enquiry.message}</p>
                   </div>
-                  
-                  {enquiry.employee_response && (
-                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg">
-                      <div className="flex items-center gap-2 mb-2">
-                        <CheckCircle className="h-4 w-4 text-primary" />
-                        <span className="text-sm font-medium text-primary">Employee Response</span>
-                        <span className="text-xs text-muted-foreground">
-                          • {format(new Date(enquiry.responded_at!), 'MMM dd, yyyy • HH:mm')}
-                        </span>
-                      </div>
-                      <p className="text-sm leading-relaxed">{enquiry.employee_response}</p>
-                    </div>
-                  )}
                 </div>
               </div>
             </Card>
           ))
         )}
       </div>
+
+      {/* Comments Modal */}
+      {showComments && currentUserId && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50">
+          <div className="fixed inset-0 overflow-auto">
+            <EnquiryComments 
+              enquiry={filteredEnquiries.find(e => e.id === showComments)!}
+              currentUserId={currentUserId}
+              isEmployee={isEmployee}
+              onClose={() => setShowComments(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

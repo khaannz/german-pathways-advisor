@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import DocumentDownloadManager from '@/components/DocumentDownloadManager';
 import { TaskList } from '@/components/TaskList';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
+import EnquiryManagement from '@/components/EnquiryManagement';
 
 interface User {
   id: string;
@@ -541,23 +542,6 @@ const EmployeeDashboard = () => {
     }
   };
 
-  const handleUpdateEnquiryStatus = async (enquiryId: string, newStatus: 'open' | 'resolved') => {
-    const { error } = await supabase
-      .from('enquiries')
-      .update({ 
-        status: newStatus,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', enquiryId);
-
-    if (error) {
-      console.error('Error updating enquiry status:', error);
-      toast({ title: "Error", description: "Failed to update enquiry status", variant: "destructive" });
-    } else {
-      toast({ title: "Success", description: "Enquiry status updated successfully" });
-      fetchUserData(selectedUserId);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     const statusMap = {
@@ -570,15 +554,6 @@ const EmployeeDashboard = () => {
     return <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>;
   };
 
-  const getEnquiryStatusColor = (status: string) => {
-    return status === 'resolved' 
-      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200';
-  };
-
-  const getEnquiryStatusIcon = (status: string) => {
-    return status === 'resolved' ? CheckCircle : Clock;
-  };
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -1303,58 +1278,11 @@ const EmployeeDashboard = () => {
                   </TabsContent>
 
                   <TabsContent value="enquiries" className="space-y-4">
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                          <MessageSquare className="h-4 w-4" />
-                          Student Enquiries ({enquiries.length})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {enquiries.length === 0 ? (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No enquiries submitted by this student</p>
-                          </div>
-                        ) : (
-                          <div className="space-y-4">
-                            {enquiries.map((enquiry) => {
-                              const StatusIcon = getEnquiryStatusIcon(enquiry.status);
-                              return (
-                                <div key={enquiry.id} className="border rounded-lg p-4">
-                                  <div className="flex items-start justify-between mb-2">
-                                    <h3 className="font-medium">{enquiry.subject}</h3>
-                                    <div className="flex items-center gap-2">
-                                      <Badge className={getEnquiryStatusColor(enquiry.status)}>
-                                        <StatusIcon className="w-3 h-3 mr-1" />
-                                        {enquiry.status}
-                                      </Badge>
-                                      {enquiry.status === 'open' && (
-                                        <Button
-                                          size="sm"
-                                          onClick={() => handleUpdateEnquiryStatus(enquiry.id, 'resolved')}
-                                        >
-                                          Mark Resolved
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                  
-                                  <p className="text-sm text-muted-foreground mb-2">
-                                    {enquiry.message}
-                                  </p>
-                                  
-                                  <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                                    <Calendar className="h-3 w-3" />
-                                    {format(new Date(enquiry.created_at), 'MMM dd, yyyy • HH:mm')}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
+                    <EnquiryManagement 
+                      userId={selectedUserId} 
+                      currentUserId={user?.id}
+                      isEmployee={true}
+                    />
                   </TabsContent>
 
                   <TabsContent value="questionnaire" className="space-y-4">

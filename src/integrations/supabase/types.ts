@@ -318,6 +318,33 @@ export type Database = {
         }
         Relationships: []
       }
+      enquiry_comments: {
+        Row: {
+          comment: string
+          created_at: string
+          enquiry_id: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          comment: string
+          created_at?: string
+          enquiry_id: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          comment?: string
+          created_at?: string
+          enquiry_id?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       lor_responses: {
         Row: {
           communication_skills: string | null
