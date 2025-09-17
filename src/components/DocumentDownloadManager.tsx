@@ -60,32 +60,48 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
   }, [selectedUserId]);
 
   const fetchResponseCounts = async () => {
+    if (!selectedUserId) return;
+    
     try {
-      // Get CV responses count
-      const { count: cvCount } = await supabase
-        .from('cv_responses')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', selectedUserId);
+      const timestamp = new Date().getTime();
+      const promises = [
+        supabase
+          .from('cv_responses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', selectedUserId)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('sop_responses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', selectedUserId)
+          .order('created_at', { ascending: false })
+          .limit(1),
+        supabase
+          .from('lor_responses')
+          .select('*', { count: 'exact', head: true })
+          .eq('user_id', selectedUserId)
+          .order('created_at', { ascending: false })
+          .limit(1)
+      ];
 
-      // Get SOP responses count
-      const { count: sopCount } = await supabase
-        .from('sop_responses')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', selectedUserId);
+      const [cvResult, sopResult, lorResult] = await Promise.all(promises);
 
-      // Get LOR responses count
-      const { count: lorCount } = await supabase
-        .from('lor_responses')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', selectedUserId);
+      const newCounts = {
+        cv: cvResult.count || 0,
+        sop: sopResult.count || 0,
+        lor: lorResult.count || 0
+      };
 
-      setResponseCounts({
-        cv: cvCount || 0,
-        sop: sopCount || 0,
-        lor: lorCount || 0
-      });
+      setResponseCounts(newCounts);
+      return newCounts;
     } catch (error) {
       console.error('Error fetching response counts:', error);
+      toast({
+        title: "Error",
+        description: "Failed to refresh response counts. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -172,26 +188,74 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
 
     setDeletingSOP(true);
     try {
-      const { error } = await supabase
+      // Get all SOP responses for the user before deletion
+      const { data: existingResponses, error: fetchError } = await supabase
+        .from('sop_responses')
+        .select('id')
+        .eq('user_id', selectedUserId);
+
+      if (fetchError) throw fetchError;
+
+      if (!existingResponses || existingResponses.length === 0) {
+        toast({
+          title: "No SOP responses",
+          description: "No SOP responses found for this user.",
+        });
+        return;
+      }
+
+      // Perform the deletion with a more specific query
+      const { error: deleteError } = await supabase
         .from('sop_responses')
         .delete()
         .eq('user_id', selectedUserId);
-      if (error) throw error;
 
+      if (deleteError) {
+        console.error('Delete operation error:', deleteError);
+        throw new Error('Failed to delete SOP response');
+      }
+
+      // Small delay to allow the database to sync
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Final verification with fresh query
+      const { data: verifyData, error: verifyError } = await supabase
+        .from('sop_responses')
+        .select('id')
+        .eq('user_id', selectedUserId);
+
+      if (verifyError) {
+        console.error('Verification error:', verifyError);
+        throw new Error('Failed to verify SOP response deletion');
+      }
+
+      if (verifyData && verifyData.length > 0) {
+        // If responses still exist, try one more time
+        const { error: retryError } = await supabase
+          .from('sop_responses')
+          .delete()
+          .eq('user_id', selectedUserId);
+
+        if (retryError) throw retryError;
+      }
+
+      // Update UI and notify parent component
       await fetchResponseCounts();
       if (onResponseDeleted) {
         await onResponseDeleted('sop');
       }
 
       toast({
-        title: "SOP response deleted",
-        description: "The user can now fill the SOP questionnaire again.",
+        title: "Success",
+        description: "SOP responses have been deleted successfully.",
       });
     } catch (error) {
       console.error('Error deleting SOP response:', error);
       toast({
         title: "Error",
-        description: "Failed to delete the SOP response. Please try again.",
+        description: error instanceof Error 
+          ? `Failed to delete SOP response: ${error.message}`
+          : "Failed to delete the SOP response. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -881,3 +945,4 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
 };
 
 export default DocumentDownloadManager;
+
