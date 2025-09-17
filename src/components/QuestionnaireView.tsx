@@ -35,21 +35,94 @@ interface SOPResponse {
   updated_at: string;
 }
 
+interface LORRecommender {
+  name: string;
+  designation: string;
+  institution: string;
+  email: string;
+  phone?: string | null;
+  relationship_type?: string | null;
+  relationship_duration?: string | null;
+  courses_projects?: string | null;
+  key_strengths?: string | null;
+  specific_examples?: string | null;
+  grades_performance?: string | null;
+  research_experience?: string | null;
+  leadership_roles?: string | null;
+  communication_skills?: string | null;
+  recommendation_strength?: string | null;
+}
+
 interface LORResponse {
   id: string;
-  recommender_name: string;
-  recommender_designation: string;
-  recommender_institution: string;
-  recommender_email: string;
-  relationship_type: string;
-  relationship_duration: string;
-  courses_projects: string;
-  key_strengths: string;
-  specific_examples: string;
-  grades_performance: string;
+  user_id?: string;
   created_at: string;
   updated_at: string;
+  recommenders: LORRecommender[];
 }
+
+const coerceValue = (value?: string | null) => value ?? "";
+
+const normalizeLORRecommenders = (payload: any): LORRecommender[] => {
+  if (!payload) return [];
+
+  if (Array.isArray(payload.recommenders) && payload.recommenders.length > 0) {
+    return payload.recommenders
+      .map((item: any) => ({
+        name: coerceValue(item?.name ?? item?.recommender_name),
+        designation: coerceValue(item?.designation ?? item?.recommender_designation),
+        institution: coerceValue(item?.institution ?? item?.recommender_institution),
+        email: coerceValue(item?.email ?? item?.recommender_email),
+        phone: item?.phone ?? null,
+        relationship_type: item?.relationship_type ?? null,
+        relationship_duration: item?.relationship_duration ?? null,
+        courses_projects: item?.courses_projects ?? null,
+        key_strengths: item?.key_strengths ?? null,
+        specific_examples: item?.specific_examples ?? null,
+        grades_performance: item?.grades_performance ?? null,
+        research_experience: item?.research_experience ?? null,
+        leadership_roles: item?.leadership_roles ?? null,
+        communication_skills: item?.communication_skills ?? null,
+        recommendation_strength: item?.recommendation_strength ?? null,
+      }))
+      .filter((entry: LORRecommender) => entry.name.trim().length > 0);
+  }
+
+  if (payload.recommender_name) {
+    return [
+      {
+        name: coerceValue(payload.recommender_name),
+        designation: coerceValue(payload.recommender_designation),
+        institution: coerceValue(payload.recommender_institution),
+        email: coerceValue(payload.recommender_email),
+        phone: payload.recommender_phone ?? null,
+        relationship_type: payload.relationship_type ?? null,
+        relationship_duration: payload.relationship_duration ?? null,
+        courses_projects: payload.courses_projects ?? null,
+        key_strengths: payload.key_strengths ?? null,
+        specific_examples: payload.specific_examples ?? null,
+        grades_performance: payload.grades_performance ?? null,
+        research_experience: payload.research_experience ?? null,
+        leadership_roles: payload.leadership_roles ?? null,
+        communication_skills: payload.communication_skills ?? null,
+        recommendation_strength: payload.recommendation_strength ?? null,
+      },
+    ];
+  }
+
+  return [];
+};
+
+const buildLORResponse = (payload: any | null): LORResponse | null => {
+  if (!payload) return null;
+  return {
+    id: payload.id,
+    user_id: payload.user_id ?? undefined,
+    created_at: payload.created_at || new Date().toISOString(),
+    updated_at: payload.updated_at || new Date().toISOString(),
+    recommenders: normalizeLORRecommenders(payload),
+  };
+};
 
 interface CVResponse {
   id: string;
@@ -182,89 +255,6 @@ export function QuestionnaireView({ selectedStudentId }: QuestionnaireViewProps)
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Personal Information</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>Name:</strong> {sopResponse.full_name}</p>
-                      <p><strong>Email:</strong> {sopResponse.email}</p>
-                      <p><strong>Phone:</strong> {sopResponse.phone}</p>
-                      <p><strong>Nationality:</strong> {sopResponse.nationality}</p>
-                      <p><strong>Date of Birth:</strong> {sopResponse.date_of_birth}</p>
-                      {sopResponse.linked_in && (
-                        <p><strong>LinkedIn:</strong> <a href={sopResponse.linked_in} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{sopResponse.linked_in}</a></p>
-                      )}
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="font-semibold mb-2">Academic Background</h4>
-                    <div className="space-y-2 text-sm">
-                      <p><strong>Current Education:</strong> {sopResponse.current_education_status}</p>
-                      <p><strong>Intended Program:</strong> {sopResponse.intended_program}</p>
-                      <p><strong>Target Universities:</strong> {sopResponse.target_universities}</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-semibold mb-2">Motivation</h4>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <strong>Why This Program:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.why_this_program}</p>
-                      </div>
-                      <div>
-                        <strong>Why Germany:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.why_germany}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Goals</h4>
-                    <div className="space-y-3 text-sm">
-                      <div>
-                        <strong>Short-term Goals:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.short_term_goals}</p>
-                      </div>
-                      <div>
-                        <strong>Long-term Goals:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.long_term_goals}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h4 className="font-semibold mb-2">Experience & Qualities</h4>
-                    <div className="space-y-3 text-sm">
-                      {sopResponse.has_thesis && sopResponse.thesis_details && (
-                        <div>
-                          <strong>Thesis/Research:</strong>
-                          <p className="mt-1 text-muted-foreground">{sopResponse.thesis_details}</p>
-                        </div>
-                      )}
-                      <div>
-                        <strong>Academic Projects:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.academic_projects}</p>
-                      </div>
-                      <div>
-                        <strong>Work Experience:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.work_experience}</p>
-                      </div>
-                      <div>
-                        <strong>Personal Qualities:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.personal_qualities}</p>
-                      </div>
-                      <div>
-                        <strong>Challenges & Accomplishments:</strong>
-                        <p className="mt-1 text-muted-foreground">{sopResponse.challenges_accomplishments}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
             </CollapsibleContent>
           </Collapsible>
         </Card>
@@ -290,47 +280,118 @@ export function QuestionnaireView({ selectedStudentId }: QuestionnaireViewProps)
               </CardHeader>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <CardContent className="space-y-4">
-                <div>
-                  <h4 className="font-semibold mb-2">Recommender Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p><strong>Name:</strong> {lorResponse.recommender_name}</p>
-                      <p><strong>Designation:</strong> {lorResponse.recommender_designation}</p>
-                    </div>
-                    <div>
-                      <p><strong>Institution:</strong> {lorResponse.recommender_institution}</p>
-                      <p><strong>Email:</strong> {lorResponse.recommender_email}</p>
-                    </div>
-                  </div>
-                </div>
+              <CardContent className="space-y-6">
+                {lorResponse.recommenders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No recommender information submitted.
+                  </p>
+                ) : (
+                  lorResponse.recommenders.map((recommender, index) => (
+                    <div
+                      key={`${recommender.email}-${index}`}
+                      className="space-y-4 rounded-lg border border-dashed p-4"
+                    >
+                      <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                        <div>
+                          <h4 className="text-base font-semibold text-foreground">{recommender.name}</h4>
+                          <p className="text-sm text-muted-foreground">{recommender.designation}</p>
+                          <p className="text-sm text-muted-foreground">{recommender.institution}</p>
+                        </div>
+                        <Badge variant="secondary">Recommender {index + 1}</Badge>
+                      </div>
 
-                <div className="space-y-3 text-sm">
-                  <div>
-                    <strong>Relationship Type:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.relationship_type}</p>
-                  </div>
-                  <div>
-                    <strong>Relationship Duration:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.relationship_duration}</p>
-                  </div>
-                  <div>
-                    <strong>Courses/Projects Together:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.courses_projects}</p>
-                  </div>
-                  <div>
-                    <strong>Key Strengths:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.key_strengths}</p>
-                  </div>
-                  <div>
-                    <strong>Specific Examples:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.specific_examples}</p>
-                  </div>
-                  <div>
-                    <strong>Academic/Work Performance:</strong>
-                    <p className="mt-1 text-muted-foreground">{lorResponse.grades_performance}</p>
-                  </div>
-                </div>
+                      <div className="grid gap-4 text-sm md:grid-cols-2">
+                        <div>
+                          <strong>Email:</strong>
+                          <p className="text-muted-foreground">{recommender.email}</p>
+                        </div>
+                        {recommender.phone && (
+                          <div>
+                            <strong>Phone:</strong>
+                            <p className="text-muted-foreground">{recommender.phone}</p>
+                          </div>
+                        )}
+                        <div>
+                          <strong>Recommendation Strength:</strong>
+                          <p className="text-muted-foreground">{recommender.recommendation_strength ?? "Not specified"}</p>
+                        </div>
+                        {recommender.relationship_duration && (
+                          <div>
+                            <strong>Relationship Duration:</strong>
+                            <p className="text-muted-foreground">{recommender.relationship_duration}</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="space-y-3 text-sm">
+                        {recommender.relationship_type && (
+                          <div>
+                            <strong>Relationship Context:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.relationship_type}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.courses_projects && (
+                          <div>
+                            <strong>Courses & Projects:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.courses_projects}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.key_strengths && (
+                          <div>
+                            <strong>Key Strengths:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.key_strengths}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.specific_examples && (
+                          <div>
+                            <strong>Specific Examples:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.specific_examples}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.grades_performance && (
+                          <div>
+                            <strong>Grades & Performance:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.grades_performance}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.research_experience && (
+                          <div>
+                            <strong>Research Experience:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.research_experience}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.leadership_roles && (
+                          <div>
+                            <strong>Leadership Roles:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.leadership_roles}
+                            </p>
+                          </div>
+                        )}
+                        {recommender.communication_skills && (
+                          <div>
+                            <strong>Communication Skills:</strong>
+                            <p className="mt-1 whitespace-pre-line text-muted-foreground">
+                              {recommender.communication_skills}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </CollapsibleContent>
           </Collapsible>
@@ -424,3 +485,8 @@ export function QuestionnaireView({ selectedStudentId }: QuestionnaireViewProps)
     </div>
   );
 }
+
+
+
+
+

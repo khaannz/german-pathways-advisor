@@ -9,12 +9,15 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { SOPResponseView } from "@/components/SOPResponseView";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { RotateCcw, Save, Clock, CheckCircle, User, GraduationCap, Target, Globe, Award, Briefcase } from "lucide-react";
+
+interface SOPFormEnhancedProps {
+  onCompleted?: () => void;
+}
 
 // Enhanced validation schema
 const sopSchema = z.object({
@@ -46,17 +49,29 @@ const sopSchema = z.object({
 
 type SOPFormData = z.infer<typeof sopSchema>;
 
-export function SOPFormEnhanced() {
-  const { user } = useAuth();
+interface PersistedSOP extends SOPFormData {
+  submitted_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
+const formatTimestamp = (value: Date | string | null | undefined) => {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  return `${date.toLocaleDateString()} - ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+};
+
+export function SOPFormEnhanced({ onCompleted }: SOPFormEnhancedProps = {}) {
+  const { user, isEmployee } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [existingResponse, setExistingResponse] = useState<SOPFormData | null>(null);
+  const [existingResponse, setExistingResponse] = useState<PersistedSOP | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionDate, setSubmissionDate] = useState<string | null>(null);
-  const [progress, setProgress] = useState(0);
-
+  const [viewRefresh, setViewRefresh] = useState(0);
   const form = useForm<SOPFormData>({
     resolver: zodResolver(sopSchema),
     mode: "onChange",
@@ -87,138 +102,106 @@ export function SOPFormEnhanced() {
   });
 
   const hasThesis = form.watch("has_thesis");
-  const watchedValues = form.watch();
 
-  // Calculate form completion progress
-  const calculateProgress = useCallback(() => {
-    const values = form.getValues();
-    const totalFields = 18; // All required fields
-    let completedFields = 0;
 
-    if (values.full_name && values.full_name.length >= 2) completedFields++;
-    if (values.email && values.email.includes('@')) completedFields++;
-    if (values.phone && values.phone.length >= 10) completedFields++;
-    if (values.nationality && values.nationality.length >= 2) completedFields++;
-    if (values.date_of_birth && values.date_of_birth.length >= 1) completedFields++;
-    if (values.current_education_status && values.current_education_status.length > 0) completedFields++;
-    if (values.intended_program && values.intended_program.length > 0) completedFields++;
-    if (values.target_universities && values.target_universities.length > 0) completedFields++;
-    if (values.why_this_program && values.why_this_program.length > 0) completedFields++;
-    if (values.why_germany && values.why_germany.length > 0) completedFields++;
-    if (values.short_term_goals && values.short_term_goals.length > 0) completedFields++;
-    if (values.long_term_goals && values.long_term_goals.length > 0) completedFields++;
-    if (values.academic_projects && values.academic_projects.length > 0) completedFields++;
-    if (values.work_experience && values.work_experience.length > 0) completedFields++;
-    if (values.personal_qualities && values.personal_qualities.length > 0) completedFields++;
-    if (values.challenges_accomplishments && values.challenges_accomplishments.length > 0) completedFields++;
-    if (values.research_interests && values.research_interests.length > 0) completedFields++;
-    if (values.language_proficiency && values.language_proficiency.length > 0) completedFields++;
-    if (values.financial_planning && values.financial_planning.length > 0) completedFields++;
+  const autoSave = useCallback(
+    async (values: SOPFormData) => {
+      if (!user || isAutoSaving || loading || (!isEmployee && isSubmitted)) return;
 
-    setProgress((completedFields / totalFields) * 100);
-  }, [form]);
+      setIsAutoSaving(true);
+      try {
+        const payload = {
+          user_id: user.id,
+          ...values,
+          updated_at: new Date().toISOString(),
+        };
 
-  // Auto-save functionality
-  const autoSave = useCallback(async (data: SOPFormData) => {
-    if (!user || isAutoSaving || loading || isSubmitted) return;
-    
-    setIsAutoSaving(true);
-    try {
-      const sopData = {
-        user_id: user.id,
-        ...data,
-        updated_at: new Date().toISOString(),
-      };
+        const { error } = await supabase
+          .from("sop_responses")
+          .upsert(payload, { onConflict: "user_id" });
 
-      const { error } = await supabase
-        .from("sop_responses")
-        .upsert(sopData, { onConflict: 'user_id' });
+        if (error) throw error;
+        setLastSaved(new Date());
+      } catch (error) {
+        console.error("Auto-save failed:", error);
+      } finally {
+        setIsAutoSaving(false);
+      }
+    },
+    [user, isAutoSaving, isEmployee, isSubmitted, loading]
+  );
 
-      if (error) throw error;
-      
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-      // Don't show error toast for auto-save failures to avoid spam
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [user, isAutoSaving, loading]);
-
-  // Auto-save when form values change (with debounce)
   useEffect(() => {
-    if (isSubmitted) return; // Don't auto-save if form is already submitted
-    
+    if (isSubmitted && !isEmployee) return;
+
     const timeoutId = setTimeout(() => {
       if (form.formState.isDirty && !form.formState.isSubmitting) {
-        const values = form.getValues();
-        autoSave(values);
+        autoSave(form.getValues());
       }
-    }, 3000); // Auto-save after 3 seconds of inactivity
+    }, 3000);
 
     return () => clearTimeout(timeoutId);
-  }, [watchedValues, form.formState.isDirty, form.formState.isSubmitting, autoSave, isSubmitted]);
+  }, [autoSave, form, form.formState.isDirty, form.formState.isSubmitting, form.watch(), isEmployee, isSubmitted]);
 
-  // Update progress when form changes
-  useEffect(() => {
-    calculateProgress();
-  }, [form.watch(), calculateProgress]);
+  const loadExistingResponse = useCallback(async () => {
+    if (!user) return;
 
-  useEffect(() => {
-    if (user) {
-      loadExistingResponse(true);
-    }
-  }, [user]);
-
-  const loadExistingResponse = async (setSubmittedStatus = false) => {
     try {
       const { data, error } = await supabase
         .from("sop_responses")
         .select("*")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (error) throw error;
 
       if (data) {
-        setExistingResponse(data);
-        if (setSubmittedStatus) {
-          setIsSubmitted(true);
-        }
-        
-        if (data.created_at) {
-          setSubmissionDate(data.created_at);
-        }
-        
+        const persisted = data as PersistedSOP;
+        setExistingResponse(persisted);
+        setIsSubmitted(Boolean(persisted.submitted_at));
+        setSubmissionDate(persisted.submitted_at ?? null);
+        setLastSaved(persisted.updated_at ? new Date(persisted.updated_at) : null);
+
         form.reset({
-          full_name: data.full_name || "",
-          email: data.email || "",
-          phone: data.phone || "",
-          nationality: data.nationality || "",
-          date_of_birth: data.date_of_birth || "",
-          linked_in: data.linked_in || "",
-          current_education_status: data.current_education_status || "",
-          intended_program: data.intended_program || "",
-          target_universities: data.target_universities || "",
-          why_this_program: data.why_this_program || "",
-          why_germany: data.why_germany || "",
-          short_term_goals: data.short_term_goals || "",
-          long_term_goals: data.long_term_goals || "",
-          has_thesis: data.has_thesis || false,
-          thesis_details: data.thesis_details || "",
-          academic_projects: data.academic_projects || "",
-          work_experience: data.work_experience || "",
-          personal_qualities: data.personal_qualities || "",
-          challenges_accomplishments: data.challenges_accomplishments || "",
-          research_interests: data.research_interests || "",
-          language_proficiency: data.language_proficiency || "",
-          financial_planning: data.financial_planning || "",
+          full_name: persisted.full_name || "",
+          email: persisted.email || "",
+          phone: persisted.phone || "",
+          nationality: persisted.nationality || "",
+          date_of_birth: persisted.date_of_birth || "",
+          linked_in: persisted.linked_in || "",
+          current_education_status: persisted.current_education_status || "",
+          intended_program: persisted.intended_program || "",
+          target_universities: persisted.target_universities || "",
+          why_this_program: persisted.why_this_program || "",
+          why_germany: persisted.why_germany || "",
+          short_term_goals: persisted.short_term_goals || "",
+          long_term_goals: persisted.long_term_goals || "",
+          has_thesis: persisted.has_thesis ?? false,
+          thesis_details: persisted.thesis_details || "",
+          academic_projects: persisted.academic_projects || "",
+          work_experience: persisted.work_experience || "",
+          personal_qualities: persisted.personal_qualities || "",
+          challenges_accomplishments: persisted.challenges_accomplishments || "",
+          research_interests: persisted.research_interests || "",
+          language_proficiency: persisted.language_proficiency || "",
+          financial_planning: persisted.financial_planning || "",
         });
+
+        setViewRefresh((prev) => prev + 1);
+      } else {
+        setExistingResponse(null);
+        setIsSubmitted(false);
+        setSubmissionDate(null);
+        setLastSaved(null);
       }
     } catch (error) {
       console.error("Error loading SOP response:", error);
     }
-  };
+  }, [form, user]);
+
+  useEffect(() => {
+    loadExistingResponse();
+  }, [loadExistingResponse]);
 
   const onSubmit = async (data: SOPFormData) => {
     if (!user) return;
@@ -228,6 +211,7 @@ export function SOPFormEnhanced() {
       const sopData = {
         user_id: user.id,
         ...data,
+        submitted_at: new Date().toISOString(),
       };
 
       if (existingResponse) {
@@ -251,10 +235,8 @@ export function SOPFormEnhanced() {
         duration: 5000,
       });
 
-      setIsSubmitted(true);
-      form.reset(data);
-      setLastSaved(new Date());
-      loadExistingResponse(false);
+      await loadExistingResponse();
+      onCompleted?.();
     } catch (error: any) {
       console.error("Error saving SOP:", error);
       toast({
@@ -267,6 +249,27 @@ export function SOPFormEnhanced() {
       setLoading(false);
     }
   };
+
+  const lastSavedDisplay = formatTimestamp(lastSaved);
+  const submissionDisplay = formatTimestamp(submissionDate);
+  const lockedView = !isEmployee && isSubmitted;
+
+  if (lockedView) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="space-y-3">
+            <Badge variant="secondary" className="w-fit">Submission locked</Badge>
+            <CardTitle className="text-2xl">Your SOP responses are locked</CardTitle>
+            <CardDescription>
+              To make changes, please contact your advisor. The summary below shows your submitted answers.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <SOPResponseView refreshKey={viewRefresh} />
+      </div>
+    );
+  }
 
   const handleClearForm = () => {
     form.reset({
@@ -293,6 +296,9 @@ export function SOPFormEnhanced() {
       language_proficiency: "",
       financial_planning: "",
     });
+    setIsSubmitted(false);
+    setSubmissionDate(null);
+    setLastSaved(null);
     toast({
       title: "Form cleared",
       description: "All form fields have been reset to default values.",
@@ -302,86 +308,64 @@ export function SOPFormEnhanced() {
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Statement of Purpose</CardTitle>
-            <CardDescription>
-              Create a comprehensive SOP with auto-save and progress tracking
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isAutoSaving && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
-            {lastSaved && !isAutoSaving && (
-              <div className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>Saved {lastSaved.toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Form Completion</span>
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant={progress >= 100 ? "default" : progress >= 75 ? "secondary" : "outline"}>
-              {progress >= 100 ? "Complete" : progress >= 75 ? "Almost Done" : "In Progress"}
+      <CardHeader className="space-y-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl">Statement of Purpose</CardTitle>
+              <CardDescription>
+                {isEmployee
+                  ? "Collect narrative details to guide SOP drafting."
+                  : "Share the story behind your application. Once submitted, updates must go through your advisor."}
+              </CardDescription>
+            </div>
+            <Badge variant={isEmployee ? "outline" : "secondary"} className="h-fit">
+              {isEmployee ? "Team editing" : "One-time submission"}
             </Badge>
           </div>
         </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          {isAutoSaving && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5 animate-spin" />
+              Auto-saving
+            </Badge>
+          )}
+          {lastSavedDisplay && !isAutoSaving && (
+            <Badge variant="outline">Last saved {lastSavedDisplay}</Badge>
+          )}
+          {submissionDisplay && (
+            <Badge variant="outline">Submitted {submissionDisplay}</Badge>
+          )}
+        </div>
       </CardHeader>
-      
+
       <CardContent>
         {isSubmitted ? (
-          <div className="space-y-6">
-            <div className="flex items-center justify-center py-8">
-              <div className="text-center">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">SOP Form Submitted!</h3>
-                <p className="text-gray-600 mb-4">
-                  Your Statement of Purpose information has been successfully submitted and is being processed by our team.
-                </p>
-                
-                <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <h4 className="font-medium text-green-800 mb-2">Form Submitted Successfully</h4>
-                  <p className="text-sm text-green-700">
-                    Thank you for submitting your SOP information. Our team will review your details and get back to you soon.
-                  </p>
-                  {submissionDate && (
-                    <p className="text-xs text-green-600 mt-2">
-                      Submitted on: {new Date(submissionDate).toLocaleDateString()}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="flex justify-center gap-4 pt-4 border-t mt-6">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => {
-                      setIsSubmitted(false);
-                      if (existingResponse) {
-                        loadExistingResponse(false);
-                      }
-                    }}
-                    className="text-gray-600"
-                  >
-                    Edit Submission
-                  </Button>
-                </div>
-              </div>
+          <div className="flex flex-col items-center gap-6 py-10 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-green-600">
+              <CheckCircle className="h-8 w-8" />
             </div>
+            <div className="max-w-xl space-y-2">
+              <h3 className="text-xl font-semibold">SOP submitted</h3>
+              <p className="text-sm text-muted-foreground">
+                Your Statement of Purpose responses are ready for the writing team. We'll be in touch if we need anything else.
+              </p>
+              {submissionDisplay && (
+                <p className="text-xs text-muted-foreground">Submitted {submissionDisplay}</p>
+              )}
+            </div>
+            {isEmployee && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsSubmitted(false);
+                  loadExistingResponse();
+                }}
+              >
+                Edit submission
+              </Button>
+            )}
           </div>
         ) : (
           <Form {...form}>
@@ -858,3 +842,26 @@ export function SOPFormEnhanced() {
     </Card>
   );
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

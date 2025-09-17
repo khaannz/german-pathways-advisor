@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Download, FileText, Users, Loader2 } from 'lucide-react';
+import { Download, FileText, Users, Loader2, Trash2 } from 'lucide-react';
 import { 
   generateCVWordDocument, 
   generateSOPWordDocument, 
@@ -27,6 +28,7 @@ import {
 interface DocumentDownloadManagerProps {
   selectedUserId: string;
   userName: string;
+  onResponseDeleted?: (type: 'cv' | 'sop' | 'lor') => Promise<void> | void;
 }
 
 interface ResponseCounts {
@@ -37,7 +39,8 @@ interface ResponseCounts {
 
 const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({ 
   selectedUserId, 
-  userName 
+  userName,
+  onResponseDeleted
 }) => {
   const { toast } = useToast();
   const [loadingCV, setLoadingCV] = useState(false);
@@ -46,6 +49,9 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
   const [loadingAll, setLoadingAll] = useState(false);
   const [format, setFormat] = useState<'word' | 'pdf'>('word');
   const [responseCounts, setResponseCounts] = useState<ResponseCounts>({ cv: 0, sop: 0, lor: 0 });
+  const [deletingCV, setDeletingCV] = useState(false);
+  const [deletingSOP, setDeletingSOP] = useState(false);
+  const [deletingLOR, setDeletingLOR] = useState(false);
 
   React.useEffect(() => {
     if (selectedUserId) {
@@ -80,6 +86,155 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
       });
     } catch (error) {
       console.error('Error fetching response counts:', error);
+    }
+  };
+
+  const deleteCVResponses = async () => {
+    if (!selectedUserId) {
+      toast({
+        title: "Error",
+        description: "Please select a user first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingCV(true);
+    try {
+      const { data: existingCV, error: cvFetchError } = await supabase
+        .from('cv_responses')
+        .select('photo_url')
+        .eq('user_id', selectedUserId)
+        .maybeSingle();
+
+      if (cvFetchError) throw cvFetchError;
+
+      const { error: educationError } = await supabase
+        .from('cv_education_entries')
+        .delete()
+        .eq('user_id', selectedUserId);
+      if (educationError) throw educationError;
+
+      const { error: workError } = await supabase
+        .from('cv_work_experience_entries')
+        .delete()
+        .eq('user_id', selectedUserId);
+      if (workError) throw workError;
+
+      const { error: cvDeleteError } = await supabase
+        .from('cv_responses')
+        .delete()
+        .eq('user_id', selectedUserId);
+      if (cvDeleteError) throw cvDeleteError;
+
+      if (existingCV?.photo_url) {
+        const segments = existingCV.photo_url.split('/storage/v1/object/public/cv_photos/');
+        if (segments.length === 2 && segments[1]) {
+          const { error: storageError } = await supabase.storage
+            .from('cv_photos')
+            .remove([segments[1]]);
+          if (storageError) {
+            console.warn('Failed to remove CV photo from storage:', storageError);
+          }
+        }
+      }
+
+      await fetchResponseCounts();
+      if (onResponseDeleted) {
+        await onResponseDeleted('cv');
+      }
+
+      toast({
+        title: "CV response deleted",
+        description: "The user can now fill the CV questionnaire again.",
+      });
+    } catch (error) {
+      console.error('Error deleting CV response:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the CV response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingCV(false);
+    }
+  };
+
+  const deleteSOPResponses = async () => {
+    if (!selectedUserId) {
+      toast({
+        title: "Error",
+        description: "Please select a user first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingSOP(true);
+    try {
+      const { error } = await supabase
+        .from('sop_responses')
+        .delete()
+        .eq('user_id', selectedUserId);
+      if (error) throw error;
+
+      await fetchResponseCounts();
+      if (onResponseDeleted) {
+        await onResponseDeleted('sop');
+      }
+
+      toast({
+        title: "SOP response deleted",
+        description: "The user can now fill the SOP questionnaire again.",
+      });
+    } catch (error) {
+      console.error('Error deleting SOP response:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the SOP response. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingSOP(false);
+    }
+  };
+
+  const deleteLORResponses = async () => {
+    if (!selectedUserId) {
+      toast({
+        title: "Error",
+        description: "Please select a user first",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setDeletingLOR(true);
+    try {
+      const { error } = await supabase
+        .from('lor_responses')
+        .delete()
+        .eq('user_id', selectedUserId);
+      if (error) throw error;
+
+      await fetchResponseCounts();
+      if (onResponseDeleted) {
+        await onResponseDeleted('lor');
+      }
+
+      toast({
+        title: "LOR responses deleted",
+        description: "The user can now fill the LOR questionnaire again.",
+      });
+    } catch (error) {
+      console.error('Error deleting LOR responses:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete the LOR responses. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setDeletingLOR(false);
     }
   };
 
@@ -544,6 +699,148 @@ const DocumentDownloadManager: React.FC<DocumentDownloadManagerProps> = ({
                 </Badge>
               )}
             </Button>
+          </div>
+        </div>
+
+        {/* Reset Responses */}
+        <div className="pt-4 border-t border-red-200 dark:border-red-800">
+          <div className="text-sm font-medium text-foreground mb-1">Reset Responses</div>
+          <p className="text-xs text-muted-foreground mb-3">Removing a response reopens the questionnaire so the student can submit a fresh version.</p>
+          <div className="grid grid-cols-1 gap-3">
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-white/80 hover:bg-blue-50 border-blue-200 text-blue-700"
+                  disabled={deletingCV || responseCounts.cv === 0}
+                >
+                  {deletingCV ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2 text-blue-600" />
+                  )}
+                  Delete CV Responses
+                  {responseCounts.cv === 0 && (
+                    <Badge variant="secondary" className="ml-auto">
+                      No Data
+                    </Badge>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete CV responses?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will remove the CV questionnaire and any related education or work history entries. The student will need to submit a fresh CV afterwards.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deletingCV}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteCVResponses()}
+                    disabled={deletingCV}
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                  >
+                    {deletingCV ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-white/80 hover:bg-green-50 border-green-200 text-green-700"
+                  disabled={deletingSOP || responseCounts.sop === 0}
+                >
+                  {deletingSOP ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2 text-green-600" />
+                  )}
+                  Delete SOP Responses
+                  {responseCounts.sop === 0 && (
+                    <Badge variant="secondary" className="ml-auto">
+                      No Data
+                    </Badge>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete SOP responses?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This removes the statement of purpose response so the student can start over with a new submission.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deletingSOP}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteSOPResponses()}
+                    disabled={deletingSOP}
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                  >
+                    {deletingSOP ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-white/80 hover:bg-purple-50 border-purple-200 text-purple-700"
+                  disabled={deletingLOR || responseCounts.lor === 0}
+                >
+                  {deletingLOR ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4 mr-2 text-purple-600" />
+                  )}
+                  Delete LOR Responses
+                  {responseCounts.lor === 0 && (
+                    <Badge variant="secondary" className="ml-auto">
+                      No Data
+                    </Badge>
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete LOR responses?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    All recommendation questionnaire answers will be removed. The student can invite recommenders and complete the form again after this action.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel disabled={deletingLOR}>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={() => deleteLORResponses()}
+                    disabled={deletingLOR}
+                    className="bg-purple-600 hover:bg-purple-700 text-white"
+                  >
+                    {deletingLOR ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4 mr-2" />
+                    )}
+                    Delete
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 

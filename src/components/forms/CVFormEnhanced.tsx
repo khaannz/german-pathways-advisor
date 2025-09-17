@@ -11,12 +11,16 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/components/AuthContext";
-import { CalendarIcon, Plus, X, RotateCcw, Save, Clock, CheckCircle, Upload, Eye, Download } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { CVResponseView } from "@/components/CVResponseView";
+import { CalendarIcon, Plus, X, RotateCcw, Save, Clock, CheckCircle, Upload, Download } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+interface CVFormEnhancedProps {
+  onCompleted?: () => void;
+}
 
 // Enhanced validation schemas
 const educationEntrySchema = z.object({
@@ -86,10 +90,18 @@ interface CVResponse {
   work_experience?: string;
   created_at?: string;
   updated_at?: string;
+  submitted_at?: string | null;
 }
 
-export function CVFormEnhanced() {
-  const { user } = useAuth();
+const formatTimestamp = (value: Date | string | null | undefined) => {
+  if (!value) return null;
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return null;
+  return format(date, "PPP p");
+};
+
+export function CVFormEnhanced({ onCompleted }: CVFormEnhancedProps = {}) {
+  const { user, isEmployee } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -97,10 +109,8 @@ export function CVFormEnhanced() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [submissionDate, setSubmissionDate] = useState<string | null>(null);
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [progress, setProgress] = useState(0);
-
+  const [viewRefresh, setViewRefresh] = useState(0);
   const form = useForm<CVFormData>({
     resolver: zodResolver(cvSchema),
     mode: "onChange",
@@ -126,149 +136,38 @@ export function CVFormEnhanced() {
     name: "work_experience_entries",
   });
 
-  // Calculate form completion progress - fixed to cap at 100%
-  const calculateProgress = useCallback(() => {
-    const values = form.getValues();
-    const totalFields = 7; // summary, technical_skills, soft_skills, languages, certifications, extracurriculars, education_entries, work_experience_entries
-    let completedFields = 0;
 
-    if (values.summary && values.summary.trim().length > 0) completedFields++;
-    if (values.technical_skills && values.technical_skills.trim().length > 0) completedFields++;
-    if (values.soft_skills && values.soft_skills.trim().length > 0) completedFields++;
-    if (values.languages && values.languages.trim().length > 0) completedFields++;
-    if (values.certifications && values.certifications.trim().length > 0) completedFields++;
-    if (values.extracurriculars && values.extracurriculars.trim().length > 0) completedFields++;
-    
-    // Check if at least one education and work experience entry is complete
-    const hasCompleteEducation = values.education_entries.some(entry => 
-      entry.institution && entry.program && entry.start_date
-    );
-    const hasCompleteWork = values.work_experience_entries.some(entry => 
-      entry.company && entry.position && entry.start_date && entry.description
-    );
-    
-    if (hasCompleteEducation) completedFields++;
-    if (hasCompleteWork) completedFields++;
+  const loadExistingResponse = useCallback(async () => {
+    if (!user) return;
 
-    // Cap progress at 100% to prevent bugs like "106%"
-    const newProgress = Math.min((completedFields / totalFields) * 100, 100);
-    setProgress(Math.round(newProgress));
-  }, [form]);
-
-  // Auto-save functionality
-  const autoSave = useCallback(async (data: CVFormData) => {
-    if (!user || isAutoSaving || loading || isSubmitted) return;
-    
-    setIsAutoSaving(true);
-    try {
-      let photoUrl = existingResponse?.photo_url;
-
-      if (selectedFile) {
-        const uploadedUrl = await uploadPhoto();
-        if (uploadedUrl) {
-          photoUrl = uploadedUrl;
-        }
-      }
-
-      const cvData = {
-        user_id: user.id,
-        technical_skills: data.technical_skills,
-        soft_skills: data.soft_skills,
-        languages: data.languages,
-        certifications: data.certifications,
-        extracurriculars: data.extracurriculars,
-        summary: data.summary,
-        photo_url: photoUrl,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (existingResponse) {
-        const { error } = await supabase
-          .from("cv_responses")
-          .update(cvData)
-          .eq("user_id", user.id);
-        
-        if (error) throw error;
-      } else {
-        const { data: newCvResponse } = await supabase
-          .from("cv_responses")
-          .insert(cvData)
-          .select()
-          .single();
-        
-        if (newCvResponse) {
-          setExistingResponse(newCvResponse);
-        }
-      }
-
-      setLastSaved(new Date());
-    } catch (error) {
-      console.error('Auto-save failed:', error);
-      // Don't show error toast for auto-save failures to avoid spam
-    } finally {
-      setIsAutoSaving(false);
-    }
-  }, [user, isAutoSaving, loading, existingResponse, selectedFile]);
-
-  // Auto-save when form values change (with debounce)
-  useEffect(() => {
-    if (isSubmitted) return; // Don't auto-save if form is already submitted
-    
-    const timeoutId = setTimeout(() => {
-      if (form.formState.isDirty && !form.formState.isSubmitting) {
-        const values = form.getValues();
-        autoSave(values);
-      }
-    }, 3000); // Auto-save after 3 seconds of inactivity
-
-    return () => clearTimeout(timeoutId);
-  }, [form.watch(), form.formState.isDirty, form.formState.isSubmitting, autoSave, isSubmitted]);
-
-  // Update progress when form changes
-  useEffect(() => {
-    calculateProgress();
-  }, [form.watch(), calculateProgress]);
-
-  useEffect(() => {
-    if (user) {
-      loadExistingResponse(true);
-    }
-  }, [user]);
-
-  const loadExistingResponse = async (setSubmittedStatus = false) => {
     try {
       const { data: cvData, error: cvError } = await supabase
         .from("cv_responses")
         .select("*")
-        .eq("user_id", user?.id)
+        .eq("user_id", user.id)
         .maybeSingle();
 
       if (cvError) throw cvError;
 
       if (cvData) {
-        setExistingResponse(cvData);
-        if (setSubmittedStatus) {
-          setIsSubmitted(true);
-        }
-        
-        if (cvData.created_at) {
-          setSubmissionDate(cvData.created_at);
-        }
-        
-        // Load education entries
+        const persisted = cvData as CVResponse;
+        setExistingResponse(persisted);
+        setIsSubmitted(Boolean(persisted.submitted_at));
+        setSubmissionDate(persisted.submitted_at ?? null);
+        setLastSaved(persisted.updated_at ? new Date(persisted.updated_at) : null);
+
         const { data: educationData, error: educationError } = await supabase
           .from("cv_education_entries")
           .select("*")
-          .eq("user_id", user?.id)
+          .eq("user_id", user.id)
           .order("start_date", { ascending: true });
 
         if (educationError) throw educationError;
 
-        // Load work experience entries
         const { data: workExperienceData, error: workExperienceError } = await supabase
           .from("cv_work_experience_entries")
           .select("*")
-          .eq("user_id", user?.id)
+          .eq("user_id", user.id)
           .order("start_date", { ascending: true });
 
         if (workExperienceError) throw workExperienceError;
@@ -294,23 +193,32 @@ export function CVFormEnhanced() {
           achievements: entry.achievements || "",
         })) || [];
 
-        const formData = {
+        form.reset({
           education_entries: educationEntries.length > 0 ? educationEntries : [{ institution: "", program: "", start_date: new Date(), end_date: undefined }],
           work_experience_entries: workExperienceEntries.length > 0 ? workExperienceEntries : [{ company: "", position: "", start_date: new Date(), end_date: undefined, description: "" }],
-          technical_skills: cvData.technical_skills || "",
-          soft_skills: cvData.soft_skills || "",
-          languages: cvData.languages || "",
-          certifications: cvData.certifications || "",
-          extracurriculars: cvData.extracurriculars || "",
-          summary: cvData.summary || "",
-        };
+          technical_skills: persisted.technical_skills || "",
+          soft_skills: persisted.soft_skills || "",
+          languages: persisted.languages || "",
+          certifications: persisted.certifications || "",
+          extracurriculars: persisted.extracurriculars || "",
+          summary: persisted.summary || "",
+        });
 
-        form.reset(formData);
+        setViewRefresh((prev) => prev + 1);
+      } else {
+        setExistingResponse(null);
+        setIsSubmitted(false);
+        setSubmissionDate(null);
+        setLastSaved(null);
       }
     } catch (error) {
       console.error("Error loading CV response:", error);
     }
-  };
+  }, [form, user]);
+
+  useEffect(() => {
+    loadExistingResponse();
+  }, [loadExistingResponse]);
 
   const uploadPhoto = async (): Promise<string | null> => {
     if (!selectedFile || !user) return null;
@@ -383,6 +291,9 @@ export function CVFormEnhanced() {
         }
       }
 
+      const submittedDate = new Date();
+      const timestamp = submittedDate.toISOString();
+
       const cvData = {
         user_id: user.id,
         technical_skills: data.technical_skills,
@@ -392,6 +303,8 @@ export function CVFormEnhanced() {
         extracurriculars: data.extracurriculars,
         summary: data.summary,
         photo_url: photoUrl,
+        updated_at: timestamp,
+        submitted_at: timestamp,
       };
 
       let cvResponseId = existingResponse?.id;
@@ -470,8 +383,10 @@ export function CVFormEnhanced() {
 
       setSelectedFile(null);
       setIsSubmitted(true);
-      setLastSaved(new Date());
-      loadExistingResponse(false);
+      setSubmissionDate(timestamp);
+      setLastSaved(submittedDate);
+      await loadExistingResponse();
+      onCompleted?.();
     } catch (error) {
       console.error("Error saving CV:", error);
       toast({
@@ -497,6 +412,7 @@ export function CVFormEnhanced() {
       summary: "",
     });
     setSelectedFile(null);
+    setLastSaved(null);
     toast({
       title: "Form cleared",
       description: "All form fields have been reset to default values.",
@@ -504,97 +420,60 @@ export function CVFormEnhanced() {
     });
   };
 
-  // Show submitted status if form is already submitted
-  if (isSubmitted && existingResponse) {
+  const lastSavedDisplay = formatTimestamp(lastSaved);
+  const submissionDisplay = formatTimestamp(submissionDate);
+  const lockedView = !isEmployee && isSubmitted;
+  const isSaving = loading || uploading;
+
+  if (lockedView) {
     return (
-      <Card className="border-green-200 bg-green-50">
-        <CardHeader className="text-center">
-          <div className="flex items-center justify-center mb-4">
-            <div className="p-3 bg-green-100 rounded-full">
-              <CheckCircle className="h-8 w-8 text-green-600" />
-            </div>
-          </div>
-          <CardTitle className="text-green-800">CV Form Submitted Successfully!</CardTitle>
-          <CardDescription className="text-green-700">
-            Your CV information has been submitted and is being processed by our team.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="text-center">
-            <p className="text-sm text-muted-foreground mb-4">
-              Submitted on: {new Date(existingResponse.created_at).toLocaleDateString()}
-            </p>
-            
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-              <h4 className="font-medium text-green-800 mb-2">Form Submitted Successfully</h4>
-              <p className="text-sm text-green-700">
-                Thank you for submitting your CV information. Our team will review your details and get back to you soon.
-              </p>
-              {submissionDate && (
-                <p className="text-xs text-green-600 mt-2">
-                  Submitted on: {new Date(submissionDate).toLocaleDateString()}
-                </p>
-              )}
-            </div>
-          </div>
-          
-          <div className="flex justify-center gap-4 pt-4 border-t">
-            <Button 
-              variant="outline" 
-              onClick={() => {
-                setIsSubmitted(false);
-                if (existingResponse) {
-                  loadExistingResponse(false);
-                }
-              }}
-              className="text-gray-600"
-            >
-              Edit Submission
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader className="space-y-3">
+            <Badge variant="secondary" className="w-fit">Submission locked</Badge>
+            <CardTitle className="text-2xl">Your CV is locked</CardTitle>
+            <CardDescription>
+              Reach out to your advisor if you need to update any details. The summary below reflects your submitted CV.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+        <CVResponseView refreshKey={viewRefresh} />
+      </div>
     );
   }
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle>Curriculum Vitae (CV)</CardTitle>
-            <CardDescription>
-              Create a comprehensive CV with auto-save and progress tracking
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isAutoSaving && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 animate-spin" />
-                <span>Saving...</span>
-              </div>
-            )}
-            {lastSaved && !isAutoSaving && (
-              <div className="flex items-center gap-1">
-                <CheckCircle className="h-4 w-4 text-green-500" />
-                <span>Saved {lastSaved.toLocaleTimeString()}</span>
-              </div>
-            )}
-          </div>
-        </div>
-        
-        {/* Progress Bar */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Form Completion</span>
-            <span className="text-sm text-muted-foreground">{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant={progress >= 100 ? "default" : progress >= 75 ? "secondary" : "outline"}>
-              {progress >= 100 ? "Complete" : progress >= 75 ? "Almost Done" : "In Progress"}
+
+      <CardHeader className="space-y-4">
+        <div className="flex flex-col gap-2">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle className="text-2xl">Curriculum Vitae (CV)</CardTitle>
+              <CardDescription>
+                {isEmployee
+                  ? "Compile a polished CV draft for this student."
+                  : "Share your academic and professional journey. Once submitted, updates go through your advisor."}
+              </CardDescription>
+            </div>
+            <Badge variant={isEmployee ? "outline" : "secondary"} className="h-fit">
+              {isEmployee ? "Team editing" : "One-time submission"}
             </Badge>
           </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+          {isSaving && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              <Clock className="h-3.5 w-3.5 animate-spin" />
+              Saving...
+            </Badge>
+          )}
+          {lastSavedDisplay && !isSaving && (
+            <Badge variant="outline">Last saved {lastSavedDisplay}</Badge>
+          )}
+          {submissionDisplay && (
+            <Badge variant="outline">Submitted {submissionDisplay}</Badge>
+          )}
         </div>
       </CardHeader>
       
@@ -1168,3 +1047,19 @@ export function CVFormEnhanced() {
     </Card>
   );
 } 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -273,6 +273,17 @@ const EmployeeDashboard = () => {
     }
   };
 
+  const handleQuestionnaireResponseDeleted = (type: 'cv' | 'sop' | 'lor') => {
+    setQuestionnaireResponses((prev) => {
+      const next = { ...prev, [type]: null };
+      return type === 'cv' ? { ...next, educationEntries: [] } : next;
+    });
+
+    if (type === 'cv') {
+      setCvResponses([]);
+    }
+  };
+
   const handleAddUniversity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUserId || !universityForm.university_name.trim() || !universityForm.program_name.trim()) {
@@ -1306,6 +1317,7 @@ const EmployeeDashboard = () => {
                           <DocumentDownloadManager 
                             selectedUserId={selectedUserId}
                             userName={users.find(u => u.user_id === selectedUserId)?.full_name || 'Unknown User'}
+                            onResponseDeleted={handleQuestionnaireResponseDeleted}
                           />
                         )}
                       </CardContent>
