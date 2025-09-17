@@ -39,7 +39,7 @@ const workExperienceEntrySchema = z.object({
 });
 
 const cvSchema = z.object({
-  education_entries: z.array(educationEntrySchema).min(1, "At least one education entry is required"),
+  education_entries: z.array(educationEntrySchema).min(1, "At least one education history is required"),
   work_experience_entries: z.array(workExperienceEntrySchema).min(1, "At least one work experience entry is required"),
   technical_skills: z.string().optional(),
   soft_skills: z.string().optional(),
@@ -126,18 +126,18 @@ export function CVFormEnhanced() {
     name: "work_experience_entries",
   });
 
-  // Calculate form completion progress
+  // Calculate form completion progress - fixed to cap at 100%
   const calculateProgress = useCallback(() => {
     const values = form.getValues();
     const totalFields = 7; // summary, technical_skills, soft_skills, languages, certifications, extracurriculars, education_entries, work_experience_entries
     let completedFields = 0;
 
-    if (values.summary && values.summary.length > 0) completedFields++;
-    if (values.technical_skills && values.technical_skills.length > 0) completedFields++;
-    if (values.soft_skills && values.soft_skills.length > 0) completedFields++;
-    if (values.languages && values.languages.length > 0) completedFields++;
-    if (values.certifications && values.certifications.length > 0) completedFields++;
-    if (values.extracurriculars && values.extracurriculars.length > 0) completedFields++;
+    if (values.summary && values.summary.trim().length > 0) completedFields++;
+    if (values.technical_skills && values.technical_skills.trim().length > 0) completedFields++;
+    if (values.soft_skills && values.soft_skills.trim().length > 0) completedFields++;
+    if (values.languages && values.languages.trim().length > 0) completedFields++;
+    if (values.certifications && values.certifications.trim().length > 0) completedFields++;
+    if (values.extracurriculars && values.extracurriculars.trim().length > 0) completedFields++;
     
     // Check if at least one education and work experience entry is complete
     const hasCompleteEducation = values.education_entries.some(entry => 
@@ -150,7 +150,9 @@ export function CVFormEnhanced() {
     if (hasCompleteEducation) completedFields++;
     if (hasCompleteWork) completedFields++;
 
-    setProgress((completedFields / totalFields) * 100);
+    // Cap progress at 100% to prevent bugs like "106%"
+    const newProgress = Math.min((completedFields / totalFields) * 100, 100);
+    setProgress(Math.round(newProgress));
   }, [form]);
 
   // Auto-save functionality
@@ -674,7 +676,7 @@ export function CVFormEnhanced() {
               {educationFields.map((field, index) => (
                 <Card key={field.id} className="p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <h4 className="font-medium">Education Entry {index + 1}</h4>
+                    <h4 className="font-medium">Education History {index + 1}</h4>
                     {educationFields.length > 1 && (
                       <Button
                         type="button"

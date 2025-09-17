@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/components/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Upload, Link, Loader2, FileText, X } from 'lucide-react';
+import { Upload, Link, Loader2, FileText, X, Camera, Image, Monitor, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface DocumentUploadProps {
   onSuccess?: () => void;
@@ -26,6 +27,10 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
     driveLink: '',
     file: null as File | null
   });
+  const [captureMode, setCaptureMode] = useState<'camera' | 'gallery' | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [stream, setStream] = useState<MediaStream | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -34,43 +39,74 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
     }
   };
 
+  // Enhanced file validation with better error messages
   const validateAndSetFile = (file: File) => {
-    // Define allowed types based on document type
+    // Define allowed types based on document type with enhanced support
     const documentAllowedTypes = ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     const imageAllowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     
     let allowedTypes: string[];
     let fileTypeDescription: string;
+    let maxSize: number;
     
     if (formData.type === 'photo') {
       allowedTypes = [...documentAllowedTypes, ...imageAllowedTypes];
       fileTypeDescription = "PDF, Word document, or image (JPEG, PNG, WebP)";
+      maxSize = 10 * 1024 * 1024; // 10MB for images
     } else {
-      allowedTypes = documentAllowedTypes;
-      fileTypeDescription = "PDF or Word document";
+      allowedTypes = [...documentAllowedTypes, ...imageAllowedTypes]; // Allow images for all types now
+      fileTypeDescription = "PDF, Word document, JPEG, PNG, or WebP";
+      maxSize = 20 * 1024 * 1024; // 20MB for documents (increased from 10MB)
     }
     
-    // Validate file type
+    // Enhanced file type validation
     if (!allowedTypes.includes(file.type)) {
       toast({
-        title: "Invalid file type",
-        description: `Please upload a ${fileTypeDescription}`,
-        variant: "destructive"
+        title: "Unsupported file type",
+        description: (
+          <div className="space-y-2">
+            <p>Please upload a {fileTypeDescription}</p>
+            <p className="text-sm text-muted-foreground">
+              Current file type: {file.type || 'Unknown'}
+            </p>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 6000
       });
       return;
     }
     
-    // Validate file size (10MB limit)
-    if (file.size > 10 * 1024 * 1024) {
+    // Enhanced size validation
+    if (file.size > maxSize) {
+      const maxSizeMB = (maxSize / 1024 / 1024).toFixed(0);
+      const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
       toast({
         title: "File too large",
-        description: "Please upload a file smaller than 10MB",
-        variant: "destructive"
+        description: (
+          <div className="space-y-2">
+            <p>File size: {fileSizeMB}MB</p>
+            <p>Maximum allowed: {maxSizeMB}MB</p>
+            <p className="text-sm text-muted-foreground">
+              Try compressing the file or use a different format
+            </p>
+          </div>
+        ),
+        variant: "destructive",
+        duration: 6000
       });
       return;
     }
     
     setFormData(prev => ({ ...prev, file }));
+    setCaptureMode(null); // Reset capture mode when file is selected
+    
+    // Show success feedback
+    toast({
+      title: "File selected",
+      description: `${file.name} (${(file.size / 1024 / 1024).toFixed(1)}MB) is ready to upload`,
+      duration: 3000
+    });
   };
 
   const handleDrag = (e: React.DragEvent) => {
@@ -102,6 +138,82 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
+    stopCamera(); // Stop camera if active
+  };
+
+  // Cleanup camera when component unmounts
+  React.useEffect(() => {
+    return () => {
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [stream]);
+
+  // Camera capture functionality
+  const startCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'environment' } // Use back camera by default
+      });
+      setStream(stream);
+      setCaptureMode('camera');
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+      }
+    } catch (error) {
+      console.error('Camera access error:', error);
+      toast({
+        title: "Camera access denied",
+        description: "Please allow camera access to capture photos",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const stopCamera = () => {
+    if (stream) {
+      stream.getTracks().forEach(track => track.stop());
+      setStream(null);
+    }
+    setCaptureMode(null);
+  };
+
+  const capturePhoto = useCallback(() => {
+    if (videoRef.current && canvasRef.current) {
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      const context = canvas.getContext('2d');
+      
+      if (context) {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        context.drawImage(video, 0, 0);
+        
+        canvas.toBlob((blob) => {
+          if (blob) {
+            const file = new File([blob], `captured-${Date.now()}.jpg`, { type: 'image/jpeg' });
+            validateAndSetFile(file);
+            stopCamera();
+          }
+        }, 'image/jpeg', 0.9);
+      }
+    }
+  }, [stream]);
+
+  const openGallery = () => {
+    // Create a temporary input to access gallery
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*,video/*';
+    input.capture = 'environment';
+    input.onchange = (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (file) {
+        validateAndSetFile(file);
+      }
+    };
+    input.click();
   };
 
   const uploadFile = async (file: File): Promise<string> => {
@@ -283,7 +395,66 @@ const DocumentUpload: React.FC<DocumentUploadProps> = ({ onSuccess }) => {
           </div>
 
           <div>
-            <Label className="text-base font-medium">Upload File (PDF/DOC) *</Label>
+            <Label className="text-base font-medium flex items-center gap-2 mb-4">
+              <Upload className="h-4 w-4" />
+              Upload File (PDF/DOC/JPG/PNG/WebP) *
+            </Label>
+            
+            {/* Enhanced upload options */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex items-center gap-2 h-12"
+                onClick={startCamera}
+              >
+                <Camera className="h-4 w-4" />
+                Take Photo
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex items-center gap-2 h-12"
+                onClick={openGallery}
+              >
+                <Image className="h-4 w-4" />
+                From Gallery
+              </Button>
+              <Button 
+                type="button" 
+                variant="outline" 
+                className="flex items-center gap-2 h-12"
+                onClick={openFileSelector}
+              >
+                <Monitor className="h-4 w-4" />
+                Browse Files
+              </Button>
+            </div>
+            
+            {/* Camera capture interface */}
+            {captureMode === 'camera' && (
+              <div className="mb-4">
+                <div className="relative bg-black rounded-lg overflow-hidden">
+                  <video 
+                    ref={videoRef}
+                    autoPlay
+                    playsInline
+                    className="w-full h-64 object-cover"
+                  />
+                  <canvas ref={canvasRef} className="hidden" />
+                  <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-3">
+                    <Button onClick={capturePhoto} size="sm">
+                      <Camera className="h-4 w-4 mr-2" />
+                      Capture
+                    </Button>
+                    <Button onClick={stopCamera} variant="outline" size="sm">
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+            
             <div
               className={`relative mt-2 border-2 border-dashed rounded-xl p-8 text-center transition-all duration-200 ${
                 dragActive

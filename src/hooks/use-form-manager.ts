@@ -29,27 +29,55 @@ export function useFormManager<T extends Record<string, any>>(
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [progress, setProgress] = useState(0);
 
-  // Calculate form completion progress
+  // Calculate form completion progress based on actual field completion
   const calculateProgress = useCallback(() => {
     const values = form.getValues();
-    const totalFields = Object.keys(values).length;
+    const allFields = Object.keys(values);
     let completedFields = 0;
 
-    Object.entries(values).forEach(([key, value]) => {
-      if (typeof value === 'string' && value.length > 0) {
+    allFields.forEach((key) => {
+      const value = values[key];
+      
+      // Check for meaningful completion, not just character count
+      if (typeof value === 'string') {
+        // Consider a string field complete if it has meaningful content (more than whitespace)
+        if (value.trim().length > 0) {
+          completedFields++;
+        }
+      } else if (typeof value === 'boolean') {
+        // Boolean fields are complete if they're explicitly set to true
+        if (value === true) {
+          completedFields++;
+        }
+      } else if (Array.isArray(value)) {
+        // Array fields are complete if they have at least one valid entry
+        const hasValidEntry = value.some(item => {
+          if (typeof item === 'string') {
+            return item.trim().length > 0;
+          } else if (typeof item === 'object' && item !== null) {
+            // For objects, check if at least one required field is filled
+            return Object.values(item).some(val => 
+              typeof val === 'string' ? val.trim().length > 0 : val != null
+            );
+          }
+          return item != null;
+        });
+        if (hasValidEntry) {
+          completedFields++;
+        }
+      } else if (value && typeof value === 'object' && value !== null) {
+        // For date objects and other objects, consider them complete if they exist
         completedFields++;
-      } else if (typeof value === 'boolean' && value) {
-        completedFields++;
-      } else if (Array.isArray(value) && value.length > 0) {
-        completedFields++;
-      } else if (value && typeof value === 'object') {
+      } else if (value != null && value !== '') {
+        // For other types, complete if not null/undefined/empty
         completedFields++;
       }
     });
 
-    const newProgress = totalFields > 0 ? (completedFields / totalFields) * 100 : 0;
-    setProgress(newProgress);
-    onProgressChange?.(newProgress);
+    // Cap progress at 100% to prevent bugs like "106%"
+    const newProgress = allFields.length > 0 ? Math.min((completedFields / allFields.length) * 100, 100) : 0;
+    setProgress(Math.round(newProgress)); // Round to avoid decimal issues
+    onProgressChange?.(Math.round(newProgress));
   }, [form, onProgressChange]);
 
   // Auto-save functionality
