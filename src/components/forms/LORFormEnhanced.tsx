@@ -33,9 +33,7 @@ const recommenderSchema = z.object({
   research_experience: z.string().optional(),
   leadership_roles: z.string().optional(),
   communication_skills: z.string().optional(),
-  recommendation_strength: z.enum(strengthValues, {
-    required_error: "Please select the strength of recommendation",
-  }),
+  recommendation_strength: z.enum(strengthValues),
 });
 
 type Recommender = z.infer<typeof recommenderSchema>;
@@ -99,10 +97,10 @@ const mapLegacyResponse = (payload: PersistedLOR | null | undefined): LORFormDat
     const enriched = payload.recommenders.map((item) => ({
       ...blankRecommender,
       ...item,
-      name: item?.name ?? item?.recommender_name ?? "",
-      designation: item?.designation ?? item?.recommender_designation ?? "",
-      institution: item?.institution ?? item?.recommender_institution ?? "",
-      email: item?.email ?? item?.recommender_email ?? "",
+      name: item?.name ?? (item as any)?.recommender_name ?? "",
+      designation: item?.designation ?? (item as any)?.recommender_designation ?? "",
+      institution: item?.institution ?? (item as any)?.recommender_institution ?? "",
+      email: item?.email ?? (item as any)?.recommender_email ?? "",
       phone: item?.phone ?? "",
       relationship_type: item?.relationship_type ?? "",
       relationship_duration: item?.relationship_duration ?? "",
@@ -163,6 +161,10 @@ const formatTimestamp = (value: Date | string | null | undefined) => {
   return `${date.toLocaleDateString()} - ${date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
 };
 
+interface LORFormEnhancedProps {
+  onCompleted?: () => void;
+}
+
 export function LORFormEnhanced({ onCompleted }: LORFormEnhancedProps = {}) {
   const { user, isEmployee } = useAuth();
   const { toast } = useToast();
@@ -197,12 +199,12 @@ export function LORFormEnhanced({ onCompleted }: LORFormEnhancedProps = {}) {
 
       if (error) throw error;
 
-      const normalized = mapLegacyResponse((data as PersistedLOR) ?? null);
+      const normalized = mapLegacyResponse((data as any) ?? null);
       form.reset(normalized);
       replace(normalized.recommenders);
 
       if (data) {
-        const persisted = data as PersistedLOR;
+        const persisted = data as any;
         setExistingResponse(persisted);
         setIsSubmitted(true);
         setSubmissionDate(persisted.created_at ?? null);
@@ -297,7 +299,7 @@ export function LORFormEnhanced({ onCompleted }: LORFormEnhancedProps = {}) {
 
     setLoading(true);
     try {
-      const payload = buildPayload(values, { finalize: true });
+      const payload = buildPayload(values);
 
       const query = supabase.from("lor_responses");
       const { error } = existingResponse

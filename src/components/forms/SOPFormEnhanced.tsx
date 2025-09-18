@@ -266,7 +266,7 @@ export function SOPFormEnhanced({ onCompleted }: SOPFormEnhancedProps = {}) {
             </CardDescription>
           </CardHeader>
         </Card>
-        <SOPResponseView refreshKey={viewRefresh} />
+        <SOPResponseView />
       </div>
     );
   }

@@ -16,6 +16,7 @@ import { format } from 'date-fns';
 import DocumentDownloadManager from '@/components/DocumentDownloadManager';
 import { TaskList } from '@/components/TaskList';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
+import { ContactMessages } from '@/components/ContactMessages';
 import EnquiryManagement from '@/components/EnquiryManagement';
 
 interface User {
@@ -878,6 +879,7 @@ const EmployeeDashboard = () => {
                     <TabsTrigger value="cvs">CVs</TabsTrigger>
                     <TabsTrigger value="documents">Documents</TabsTrigger>
                     <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
+                    <TabsTrigger value="contact-messages">Contact Messages</TabsTrigger>
                     <TabsTrigger value="questionnaire">Responses</TabsTrigger>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                   </TabsList>
@@ -1294,6 +1296,10 @@ const EmployeeDashboard = () => {
                       currentUserId={user?.id}
                       isEmployee={true}
                     />
+                  </TabsContent>
+
+                  <TabsContent value="contact-messages" className="space-y-4">
+                    <ContactMessages />
                   </TabsContent>
 
                   <TabsContent value="questionnaire" className="space-y-4">

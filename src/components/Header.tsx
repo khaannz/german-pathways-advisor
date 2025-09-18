@@ -35,7 +35,6 @@ const Header = () => {
             <Button 
               variant="ghost" 
               onClick={() => setShowContactModal(true)}
-              className="text-foreground hover:text-primary transition-colors"
             >
               Contact
             </Button>

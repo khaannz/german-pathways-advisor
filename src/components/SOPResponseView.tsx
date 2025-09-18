@@ -8,6 +8,7 @@ import { Loader2, User, BookOpen, Target, Star, Globe, Clock } from "lucide-reac
 interface SOPResponse {
   created_at?: string | null;
   updated_at?: string | null;
+  submitted_at?: string | null;
   full_name?: string | null;
   email?: string | null;
   phone?: string | null;

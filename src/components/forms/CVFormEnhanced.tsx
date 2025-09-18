@@ -437,7 +437,7 @@ export function CVFormEnhanced({ onCompleted }: CVFormEnhancedProps = {}) {
             </CardDescription>
           </CardHeader>
         </Card>
-        <CVResponseView refreshKey={viewRefresh} />
+        <CVResponseView />
       </div>
     );
   }

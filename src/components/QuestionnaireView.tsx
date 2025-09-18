@@ -180,7 +180,7 @@ export function QuestionnaireView({ selectedStudentId }: QuestionnaireViewProps)
         .maybeSingle();
 
       if (lorError) throw lorError;
-      setLORResponse(lorData);
+      setLORResponse(lorData as any);
 
       // Load CV response
       const { data: cvData, error: cvError } = await supabase

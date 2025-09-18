@@ -42,7 +42,7 @@ export default function CVQuestionnaire() {
             <div className="grid gap-8 lg:grid-cols-[2fr,1fr]">
               <CVFormEnhanced onCompleted={handleCompleted} />
               <div className="space-y-4">
-                <CVResponseView refreshKey={refreshKey} />
+                <CVResponseView />
               </div>
             </div>
           ) : (

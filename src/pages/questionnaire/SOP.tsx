@@ -42,7 +42,7 @@ export default function SOPQuestionnaire() {
             <div className="grid gap-8 lg:grid-cols-[2fr,1fr]">
               <SOPFormEnhanced onCompleted={handleCompleted} />
               <div className="space-y-4">
-                <SOPResponseView refreshKey={refreshKey} />
+                <SOPResponseView />
               </div>
             </div>
           ) : (

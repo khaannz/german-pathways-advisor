@@ -40,12 +40,15 @@ export const ContactModal = ({ open, onOpenChange }: ContactModalProps) => {
     setLoading(true);
 
     try {
+      // Submit to contact_messages table for both authenticated and anonymous users
       const { error } = await supabase
-        .from('enquiries')
+        .from('contact_messages')
         .insert({
-          user_id: user?.id,
+          name: formData.name,
+          email: formData.email,
           subject: formData.subject,
-          message: `Name: ${formData.name}\nEmail: ${formData.email}\n\nMessage:\n${formData.message}`,
+          message: formData.message,
+          user_id: user?.id || null,
           status: 'open'
         });
 
