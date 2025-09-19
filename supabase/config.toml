@@ -1,1 +1,7 @@
 project_id = "scjzawibacootyibfvgp"
+
+[functions.create-user]
+verify_jwt = true
+
+[functions.send-password-reset]
+verify_jwt = true

@@ -17,6 +17,7 @@ import DocumentDownloadManager from '@/components/DocumentDownloadManager';
 import { TaskList } from '@/components/TaskList';
 import { CreateTaskModal } from '@/components/CreateTaskModal';
 import { ContactMessages } from '@/components/ContactMessages';
+import { UserManagement } from '@/components/UserManagement';
 import EnquiryManagement from '@/components/EnquiryManagement';
 
 interface User {
@@ -789,9 +790,10 @@ const EmployeeDashboard = () => {
           </div>
 
           <Tabs defaultValue="dashboard" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
+            <TabsList className="grid w-full grid-cols-3 mb-6">
               <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="contact-messages">Contact Messages</TabsTrigger>
+              <TabsTrigger value="user-management">User Management</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dashboard" className="space-y-6">
@@ -1377,6 +1379,10 @@ const EmployeeDashboard = () => {
 
             <TabsContent value="contact-messages" className="space-y-6">
               <ContactMessages />
+            </TabsContent>
+
+            <TabsContent value="user-management" className="space-y-6">
+              <UserManagement />
             </TabsContent>
           </Tabs>
         </div>
