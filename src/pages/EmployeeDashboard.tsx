@@ -830,6 +830,11 @@ const EmployeeDashboard = () => {
             </Card>
           </div>
 
+          {/* Contact Messages - Independent Section for Anonymous Users */}
+          <div className="mb-8">
+            <ContactMessages />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <Card className="lg:col-span-1">
               <CardHeader>
@@ -872,14 +877,13 @@ const EmployeeDashboard = () => {
             <div className="lg:col-span-3">
               {selectedUserId ? (
                 <Tabs defaultValue="universities" className="w-full">
-                  <TabsList className="grid w-full grid-cols-8">
+                  <TabsList className="grid w-full grid-cols-7">
                     <TabsTrigger value="universities">Universities</TabsTrigger>
                     <TabsTrigger value="sops">SOPs</TabsTrigger>
                     <TabsTrigger value="lors">LORs</TabsTrigger>
                     <TabsTrigger value="cvs">CVs</TabsTrigger>
                     <TabsTrigger value="documents">Documents</TabsTrigger>
                     <TabsTrigger value="enquiries">Enquiries</TabsTrigger>
-                    <TabsTrigger value="contact-messages">Contact Messages</TabsTrigger>
                     <TabsTrigger value="questionnaire">Responses</TabsTrigger>
                     <TabsTrigger value="tasks">Tasks</TabsTrigger>
                   </TabsList>
@@ -1298,9 +1302,6 @@ const EmployeeDashboard = () => {
                     />
                   </TabsContent>
 
-                  <TabsContent value="contact-messages" className="space-y-4">
-                    <ContactMessages />
-                  </TabsContent>
 
                   <TabsContent value="questionnaire" className="space-y-4">
                     <Card>

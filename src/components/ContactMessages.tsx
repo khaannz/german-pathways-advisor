@@ -55,6 +55,7 @@ export const ContactMessages = ({ className }: ContactMessagesProps) => {
       const { data, error } = await supabase
         .from('contact_messages')
         .select('*')
+        .is('user_id', null) // Only fetch anonymous contact messages
         .order('created_at', { ascending: false });
 
       if (error) throw error;
@@ -164,10 +165,10 @@ export const ContactMessages = ({ className }: ContactMessagesProps) => {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5" />
-            Contact Messages
+            Contact Messages (Anonymous Users)
           </CardTitle>
           <CardDescription>
-            Manage incoming contact form submissions from website visitors.
+            Manage contact form submissions from anonymous website visitors (not registered users).
           </CardDescription>
           <div className="flex gap-2">
             <Badge variant="destructive">{openMessages.length} Open</Badge>
