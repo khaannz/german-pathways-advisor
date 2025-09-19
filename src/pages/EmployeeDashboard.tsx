@@ -788,6 +788,14 @@ const EmployeeDashboard = () => {
             <p className="text-muted-foreground">Manage user applications, documents, and enquiries</p>
           </div>
 
+          <Tabs defaultValue="dashboard" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
+              <TabsTrigger value="contact-messages">Contact Messages</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="dashboard" className="space-y-6">
+
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -828,11 +836,6 @@ const EmployeeDashboard = () => {
                 <div className="text-2xl font-bold">{enquiries.length}</div>
               </CardContent>
             </Card>
-          </div>
-
-          {/* Contact Messages - Independent Section for Anonymous Users */}
-          <div className="mb-8">
-            <ContactMessages />
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -1370,6 +1373,12 @@ const EmployeeDashboard = () => {
               )}
             </div>
           </div>
+            </TabsContent>
+
+            <TabsContent value="contact-messages" className="space-y-6">
+              <ContactMessages />
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
 
